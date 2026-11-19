@@ -330,6 +330,21 @@ td select.tsel{padding:12px 0}
 .team-add{display:flex;flex-direction:column;gap:12px;background:var(--soft);border-radius:14px;padding:16px}
 .team-add .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
 .team-add .tb{align-self:flex-start}
+
+/* ===== server states ===== */
+#setupForm{display:flex;flex-direction:column;gap:14px}
+#setupForm[hidden],#loginForm[hidden]{display:none}
+.lhint{margin:2px 0 0;text-align:center;font-size:13px;color:var(--muted)}
+.lhint.left{text-align:left;margin:0;line-height:1.5}
+.lstate{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:18px 8px;color:#444;font-size:15px;line-height:1.5}
+.lstate[hidden]{display:none}
+.lstate.warn{background:#FDF0DC;border-radius:12px;color:#5A3A08;padding:18px}
+.lstate .tb{margin-top:4px}
+.spin{width:28px;height:28px;border-radius:50%;border:3px solid #E4E4E1;border-top-color:var(--ink);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.trow.off{opacity:.55}
+.role-tag.off{background:#FBE5E3;color:var(--bad)}
+.trow .tact .rs:hover{border-color:var(--ok);color:var(--ok)}
 </style>
 </head>
 <body>
@@ -341,12 +356,23 @@ td select.tsel{padding:12px 0}
 <img id="loginLogo" class="login-logo" alt="Media Market Advertising">
 <h1 id="loginH">Sign in</h1>
 <p class="login-sub">Media Market CRM · Team workspace</p>
-<form id="loginForm" novalidate>
+<form id="loginForm" novalidate hidden>
 <label class="field">Username<input id="lu" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
 <label class="field">Password<span class="pw"><input id="lp" type="password" autocomplete="current-password" required><button type="button" id="pwShow" aria-label="Show password">Show</button></span></label>
 <p class="lerr" id="lerr" role="alert" hidden></p>
 <button class="lbtn" type="submit">Sign in</button>
+<p class="lhint">Forgot your password? Ask the Market Manager.</p>
 </form>
+<form id="setupForm" novalidate hidden>
+<p class="lhint left">This is the first time the CRM is opened. Create the Market Manager account. You will add the team after signing in.</p>
+<label class="field">Your name<input id="sName" type="text" autocomplete="name" placeholder="e.g. Ahmed Ali"></label>
+<label class="field">Username<input id="sUser" type="text" autocapitalize="none" spellcheck="false" autocomplete="username" placeholder="e.g. manager"></label>
+<label class="field">Password<input id="sPass" type="password" autocomplete="new-password" placeholder="At least 6 characters"></label>
+<label class="field">Confirm password<input id="sPass2" type="password" autocomplete="new-password"></label>
+<p class="lerr" id="serr" role="alert" hidden></p>
+<button class="lbtn" type="submit">Create manager account</button>
+</form>
+<div class="lstate" id="lstate" role="status" hidden></div>
 </div>
 </section>
 
@@ -430,6 +456,7 @@ td select.tsel{padding:12px 0}
 <div class="modal" id="accModal" hidden><div class="msheet" role="dialog" aria-modal="true" aria-labelledby="accH">
 <div class="acc-top"><span class="avatar big" id="accAvatar" aria-hidden="true">A</span><div><h3 id="accH">Account</h3><p id="accRole"></p></div></div>
 <div class="acc-actions">
+<button class="tb" type="button" id="openPw"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Change my password</button>
 <button class="tb mgr-only" type="button" id="openTeam"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></svg>Team accounts</button>
 <button class="tb" type="button" id="logout"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l5-5-5-5M15 12H3"/></svg>Sign out</button>
 </div>
@@ -438,19 +465,29 @@ td select.tsel{padding:12px 0}
 
 <div class="modal" id="teamModal" hidden><div class="msheet wide" role="dialog" aria-modal="true" aria-labelledby="teamH">
 <h3 id="teamH">Team accounts</h3>
-<p>Each person signs in with their own account. Every change they make is saved with their name.</p>
+<p>Each person signs in with their own account from any device. Every change they make is saved with their name. If someone forgets their password, remove their access and add them again with a new username.</p>
 <div class="team-list" id="teamList"></div>
 <form class="team-add" id="teamAdd" novalidate>
 <b>Add a team member</b>
 <div class="two"><label class="field">Full name<input id="tName" type="text" placeholder="e.g. Sara Ali"></label>
 <label class="field">Username<input id="tUser" type="text" placeholder="e.g. sara" autocapitalize="none" spellcheck="false"></label></div>
-<div class="two"><label class="field">Password<input id="tPass" type="text" placeholder="At least 4 characters"></label>
+<div class="two"><label class="field">Password<input id="tPass" type="text" placeholder="At least 6 characters" autocomplete="off"></label>
 <label class="field">Role<select id="tRole"><option value="employee">Employee</option><option value="manager">Market Manager</option></select></label></div>
 <p class="lerr" id="tErr" role="alert" hidden></p>
 <button class="tb primary" type="submit">Add account</button>
 </form>
 <div class="mfoot"><button class="tb" type="button" data-close>Done</button></div>
 </div></div>
+
+<div class="modal" id="pwModal" hidden><div class="msheet" role="dialog" aria-modal="true" aria-labelledby="pwH">
+<h3 id="pwH">Change password</h3>
+<form id="pwForm" novalidate style="display:flex;flex-direction:column;gap:14px">
+<label class="field">Current password<input id="pwOld" type="password" autocomplete="current-password"></label>
+<label class="field">New password<input id="pwNew" type="password" autocomplete="new-password" placeholder="At least 6 characters"></label>
+<label class="field">Confirm new password<input id="pwNew2" type="password" autocomplete="new-password"></label>
+<p class="lerr" id="pwErr" role="alert" hidden></p>
+<div class="mfoot"><button class="tb" type="button" data-close>Cancel</button><button class="tb primary" type="submit">Save password</button></div>
+</form></div></div>
 
 <div class="modal" id="starModal" hidden><div class="msheet" role="dialog" aria-modal="true" aria-labelledby="starH">
 <h3 id="starH">Star of the Month</h3>
@@ -651,14 +688,8 @@ var TABS={marketing:'Marketing',sales:'Sales',finance:'Finance',admin:'Administr
 var MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 var BASE_TYPES=['Double Decker','Sequence','Gate','Mirror','Unipole','Billboard','Bridge','Lamp Post','Mega Wall','Digital Screen'];
-var KEY='mm-crm-v1',UKEY='mm-crm-user';
-var db;
-try{db=JSON.parse(localStorage.getItem(KEY))||{};}catch(e){db={};}
-['marketing','sales','finance','locs','types','log'].forEach(function(k){if(!Array.isArray(db[k]))db[k]=[];});
-if(!db.star||typeof db.star!=='object')db.star={};
-if(!db._seeded){db.sales=[{id:uid()}];db._seeded=true;}
+var db=emptyDb();
 var me='';
-function save(){try{localStorage.setItem(KEY,JSON.stringify(db));}catch(e){toast('Could not save: open the page in Chrome or Safari');}}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
 function today(){var d=new Date();d.setHours(0,0,0,0);return d;}
@@ -674,55 +705,183 @@ var d=new Date(t),y=new Date();y.setDate(y.getDate()-1);if(d.toDateString()===y.
 function agoEl(t){return t?'<span class="ago" data-t="'+t+'" title="'+fullDate(t)+'">'+ago(t)+'</span>':'';}
 function logIt(dept,action,label,rid){var t=Date.now(),L=db.log,last=L[L.length-1];
 if(action==='edited'&&last&&last.u===who()&&last.r===rid&&last.a==='edited'&&t-last.t<10*60000){last.t=t;last.l=label||last.l;return;}
-L.push({t:t,u:who(),d:dept,a:action,l:label||'',r:rid||''});if(L.length>600)L.splice(0,L.length-600);}
+L.push({id:uid(),t:t,u:who(),d:dept,a:action,l:label||'',r:rid||''});}
 function touch(obj,dept,action,label){var t=Date.now();obj.updatedAt=t;obj.updatedBy=who();if(!obj.createdAt){obj.createdAt=t;obj.createdBy=who();}logIt(dept,action,label,obj.id);}
 function updCell(r){return r.updatedAt?'<b>'+esc(r.updatedBy||'Unknown')+'</b>'+agoEl(r.updatedAt):'<span style="color:#BBB">Not edited yet</span>';}
 setInterval(function(){document.querySelectorAll('.ago[data-t]').forEach(function(el){el.textContent=ago(+el.getAttribute('data-t'));});},60000);
 
-/* ---------- accounts & sign-in (demo: accounts are stored in this browser) ---------- */
-var SKEY='mm-crm-session';
-function hash(p){var h=5381,h2=52711;for(var i=0;i<p.length;i++){var c=p.charCodeAt(i);h=((h<<5)+h+c)|0;h2=((h2<<5)+h2^c)|0;}return'h'+(h>>>0).toString(36)+(h2>>>0).toString(36);}
-if(!Array.isArray(db.users)||!db.users.length){db.users=[
-{id:'u-mgr',name:'Market Manager',user:'manager',pass:hash('manager123'),role:'manager'},
-{id:'u-ammar',name:'Ammar',user:'ammar',pass:hash('1234'),role:'employee'},
-{id:'u-mona',name:'Mona',user:'mona',pass:hash('1234'),role:'employee'}];save();}
+/* ---------- server (Firebase): accounts + shared data ---------- */
+var FB_CONFIG=/*FIREBASE_CONFIG*/{apiKey:"AIzaSyAOY5F2rnSHSFxF5eagYe8wus3d6l8Rks0",authDomain:"media-market-crm.firebaseapp.com",projectId:"media-market-crm",storageBucket:"media-market-crm.firebasestorage.app",messagingSenderId:"715327173936",appId:"1:715327173936:web:00849b7108f70f180804f5"}/*END_FIREBASE_CONFIG*/;
+var FB_VERSION='13.4.0';
+var EMAIL_DOMAIN='@mediamarket-crm.app';
+var FB=null,fsdb=null,auth=null,app2=null,shadow={},syncTimer=null,unsubs=[],dataReady=false,justSignedIn=false,settingUp=false,remoteTimer=null,renderWhenIdle=false;
+function emptyDb(){return{marketing:[],sales:[],finance:[],locs:[],types:[],log:[],star:{},users:[]};}
+function stable(o){if(o===null||typeof o!=='object')return JSON.stringify(o);if(Array.isArray(o))return'['+o.map(stable).join(',')+']';
+return'{'+Object.keys(o).filter(function(k){return o[k]!==undefined;}).sort().map(function(k){return JSON.stringify(k)+':'+stable(o[k]);}).join(',')+'}';}
+function clean(o){var c={};Object.keys(o||{}).forEach(function(k){if(k!=='id'&&o[k]!==undefined)c[k]=o[k];});return c;}
+function localDocs(){var out={};
+['marketing','sales','finance'].forEach(function(d){db[d].forEach(function(r){var c=clean(r);c.dept=d;out['records/'+r.id]=c;});});
+db.locs.forEach(function(l){out['locs/'+l.id]=clean(l);});
+db.log.forEach(function(l){if(l.u===who())out['log/'+l.id]=clean(l);});
+if(isMgr()&&db.star&&db.star.name!==undefined)out['meta/star']=clean(db.star);
+out['meta/types']={list:db.types.slice()};
+return out;}
+function save(){if(!fsdb||!account||!dataReady)return;clearTimeout(syncTimer);syncTimer=setTimeout(flush,450);}
+function flush(){clearTimeout(syncTimer);syncTimer=null;if(!fsdb||!account)return Promise.resolve();
+var cur=localDocs(),jobs=[];
+Object.keys(cur).forEach(function(p){var j=stable(cur[p]);if(shadow[p]===j)return;if(p==='meta/types'&&!shadow[p]&&!db.types.length)return;
+shadow[p]=j;jobs.push(FB.setDoc(FB.doc(fsdb,p),cur[p]));});
+Object.keys(shadow).forEach(function(p){if(cur[p]||!/^(records|locs)\//.test(p))return;delete shadow[p];jobs.push(FB.deleteDoc(FB.doc(fsdb,p)));});
+return Promise.all(jobs).catch(function(err){console.error(err);toast(err&&err.code==='permission-denied'?'You don’t have permission for that change':'A change could not be saved. Check the internet connection.');});}
+function isDirty(p,obj){var j=stable(obj);return shadow[p]===undefined||shadow[p]!==j;}
+/* keep object identity so open rows/pickers keep working */
+function mergeList(list,snap,prefix,toLocal){var byId={};list.forEach(function(o){byId[o.id]=o;});var out=[],seen={};
+snap.forEach(function(d){var data=d.data(),p=prefix+d.id,ex=byId[d.id];seen[d.id]=1;
+var keepLocal=ex&&isDirty(p,toLocal(ex))&&syncTimer;
+shadow[p]=stable(data);
+if(keepLocal){out.push(ex);return;}
+var o=ex||{id:d.id};Object.keys(o).forEach(function(k){if(k!=='id')delete o[k];});Object.assign(o,data);out.push(o);});
+list.forEach(function(o){if(!seen[o.id]&&shadow[prefix+o.id]===undefined)out.push(o);});
+return out;}
+function listen(){dataReady=false;db=emptyDb();shadow={};
+var need={records:0,locs:0,log:0,star:0,types:0};if(isMgr())need.users=0;
+function got(k,snap){var first=!need[k];need[k]=1;
+if(!dataReady&&Object.keys(need).every(function(x){return need[x];})){dataReady=true;onDataReady();return;}
+if(dataReady&&!first&&!(snap&&snap.metadata&&snap.metadata.hasPendingWrites))remoteChanged();}
+function err(e){console.error(e);toast('Lost connection to the server. Retrying…');}
+unsubs.push(FB.onSnapshot(FB.collection(fsdb,'records'),function(snap){
+var all=[].concat(db.marketing.map(function(r){r.__d='marketing';return r;}),db.sales.map(function(r){r.__d='sales';return r;}),db.finance.map(function(r){r.__d='finance';return r;}));
+var merged=mergeList(all,snap,'records/',function(r){var c=clean(r);delete c.__d;c.dept=r.__d;return c;});
+var m={marketing:[],sales:[],finance:[]};
+merged.forEach(function(r){var d=r.dept||r.__d;delete r.dept;delete r.__d;if(m[d])m[d].push(r);});
+['marketing','sales','finance'].forEach(function(d){m[d].sort(function(a,b){return(a.createdAt||0)-(b.createdAt||0);});db[d]=m[d];});
+got('records',snap);},err));
+unsubs.push(FB.onSnapshot(FB.collection(fsdb,'locs'),function(snap){db.locs=mergeList(db.locs,snap,'locs/',clean);
+db.locs.sort(function(a,b){return(a.createdAt||0)-(b.createdAt||0);});got('locs',snap);},err));
+unsubs.push(FB.onSnapshot(FB.query(FB.collection(fsdb,'log'),FB.orderBy('t','desc'),FB.limit(200)),function(snap){
+var mine={};db.log.forEach(function(l){if(shadow['log/'+l.id]===undefined)mine[l.id]=l;});
+var list=[];snap.forEach(function(d){var o=d.data();o.id=d.id;shadow['log/'+d.id]=stable(d.data());delete mine[d.id];list.push(o);});
+Object.keys(mine).forEach(function(k){list.push(mine[k]);});
+list.sort(function(a,b){return a.t-b.t;});db.log=list;got('log',snap);},err));
+unsubs.push(FB.onSnapshot(FB.doc(fsdb,'meta/star'),function(d){db.star=d.exists()?d.data():{};if(d.exists())shadow['meta/star']=stable(d.data());got('star',d);},err));
+unsubs.push(FB.onSnapshot(FB.doc(fsdb,'meta/types'),function(d){var l=d.exists()&&Array.isArray(d.data().list)?d.data().list:[];
+db.types=l;if(d.exists())shadow['meta/types']=stable(d.data());got('types',d);},err));
+if(isMgr())unsubs.push(FB.onSnapshot(FB.collection(fsdb,'users'),function(snap){var u=[];snap.forEach(function(d){var o=d.data();u.push({id:d.id,name:o.name,user:o.username,role:o.role,active:o.active!==false});});db.users=u;got('users',snap);},err));}
+function stopListening(){unsubs.forEach(function(f){try{f();}catch(e){}});unsubs=[];dataReady=false;clearTimeout(syncTimer);syncTimer=null;db=emptyDb();shadow={};}
+function busy(){var a=document.activeElement;return a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&(a.closest('#dept')||a.closest('.modal'));}
+function remoteChanged(){clearTimeout(remoteTimer);remoteTimer=setTimeout(function(){if(busy()){renderWhenIdle=true;return;}repaint();},120);}
+document.addEventListener('focusout',function(){setTimeout(function(){if(renderWhenIdle&&!busy()){renderWhenIdle=false;repaint();}},50);});
+function repaint(){if(!account||!dataReady)return;
+if(document.getElementById('dept').classList.contains('show')){if(cur==='admin')renderLocs();else render();paintLastup();}
+else paintHome();
+if(!document.getElementById('pickModal').hidden)paintPicker();
+if(!document.getElementById('teamModal').hidden)paintTeam();}
+function loadSDK(){var b='https://www.gstatic.com/firebasejs/'+FB_VERSION+'/';
+return Promise.all([import(b+'firebase-app.js'),import(b+'firebase-auth.js'),import(b+'firebase-firestore.js')]).then(function(m){FB=Object.assign({},m[0],m[1],m[2]);});}
+function toEmail(u){return u.trim().toLowerCase()+EMAIL_DOMAIN;}
+function authMsg(e){var c=e&&e.code||'';
+if(/invalid-credential|wrong-password|user-not-found|invalid-email|invalid-login/.test(c))return'Wrong username or password';
+if(/too-many-requests/.test(c))return'Too many attempts. Wait a few minutes and try again.';
+if(/network-request-failed/.test(c))return'No internet connection. Check it and try again.';
+if(/email-already-in-use/.test(c))return'This username is already taken';
+if(/weak-password/.test(c))return'Password must be at least 6 characters';
+if(/operation-not-allowed/.test(c))return'Email/Password sign-in is not enabled in Firebase (Authentication → Sign-in method).';
+if(/unauthorized-domain/.test(c))return'This website address is not allowed yet. Add it in Firebase → Authentication → Settings → Authorized domains.';
+if(/permission-denied/.test(c))return'The server refused this. Check the Firestore security rules.';
+return'Something went wrong ('+(c||'unknown')+'). Try again.';}
+
+/* ---------- account state ---------- */
 var account=null;
-try{var sid=localStorage.getItem(SKEY);account=db.users.filter(function(u){return u.id===sid;})[0]||null;}catch(e){}
 function isMgr(){return!!account&&account.role==='manager';}
 function roleName(r){return r==='manager'?'Market Manager':'Employee';}
 function applyAccount(){me=account?account.name:'';document.body.classList.toggle('role-manager',isMgr());document.body.classList.toggle('role-employee',!!account&&!isMgr());paintWho();}
 function paintWho(){['whoHome','whoDept'].forEach(function(id){var b=document.getElementById(id);if(!b)return;b.classList.remove('unset');
 b.querySelector('span').innerHTML=account?esc(account.name)+' <span class="role-tag'+(isMgr()?'':' emp')+'">'+(isMgr()?'Manager':'Employee')+'</span>':'';
 b.setAttribute('aria-label',account?'Signed in as '+account.name+', '+roleName(account.role)+'. Account menu':'Account');});}
+
+/* ---------- sign-in screen ---------- */
 var loginV=document.getElementById('login'),lu=document.getElementById('lu'),lp=document.getElementById('lp'),lerr=document.getElementById('lerr');
+var lstate=document.getElementById('lstate'),loginForm=document.getElementById('loginForm'),setupForm=document.getElementById('setupForm');
 try{document.getElementById('loginLogo').src='data:image/png;base64,'+window.MM_LOGO_PNG;}catch(e){}
-function showLogin(){['home','dept'].forEach(function(id){document.getElementById(id).classList.remove('show');});loginV.classList.add('show');document.title='Sign in — Media Market CRM';setTimeout(function(){try{lu.focus();}catch(e){}},60);}
-document.getElementById('loginForm').addEventListener('submit',function(e){e.preventDefault();
-var u=lu.value.trim().toLowerCase(),acc=db.users.filter(function(x){return x.user.toLowerCase()===u;})[0];
+function setLoginState(st,msg){var h=document.getElementById('loginH'),sub=document.querySelector('.login-sub');
+loginForm.hidden=st!=='login';setupForm.hidden=st!=='setup';
+var busyStates={loading:'Connecting to the server…',syncing:'Loading your data…',signing:'Signing in…'};
+if(busyStates[st]){lstate.hidden=false;lstate.className='lstate';lstate.innerHTML='<span class="spin" aria-hidden="true"></span>'+busyStates[st];}
+else if(st==='noconfig'){lstate.hidden=false;lstate.className='lstate warn';lstate.innerHTML='<b>The server is not connected yet.</b><br>Add the Firebase settings to this file to start.';}
+else if(st==='offline'){lstate.hidden=false;lstate.className='lstate warn';lstate.innerHTML='<b>Can’t reach the server.</b><br>'+esc(msg||'Check the internet connection, then try again.')+'<br><button type="button" class="tb" id="retry">Try again</button>';
+document.getElementById('retry').onclick=function(){location.reload();};}
+else lstate.hidden=true;
+h.textContent=st==='setup'?'Set up':'Sign in';
+sub.textContent=st==='setup'?'Create the Market Manager account to start':'Media Market CRM · Team workspace';
+if(st==='login')setTimeout(function(){try{lu.focus();}catch(e){}},60);
+if(st==='setup')setTimeout(function(){try{document.getElementById('sName').focus();}catch(e){}},60);}
+function showLogin(){['home','dept'].forEach(function(id){document.getElementById(id).classList.remove('show');});loginV.classList.add('show');document.title='Sign in — Media Market CRM';}
+function loginError(m){setLoginState('login');lerr.textContent=m;lerr.hidden=false;}
+loginForm.addEventListener('submit',function(e){e.preventDefault();lerr.hidden=true;
+var u=lu.value.trim().toLowerCase();
 if(!u||!lp.value){lerr.textContent='Enter your username and password';lerr.hidden=false;return;}
-if(!acc||acc.pass!==hash(lp.value)){lerr.textContent='Wrong username or password';lerr.hidden=false;lp.select();return;}
-account=acc;try{localStorage.setItem(SKEY,acc.id);}catch(e){}lerr.hidden=true;lp.value='';applyAccount();logIt('home','signed in','',acc.id);save();
-loginV.classList.remove('show');go('home');try{playIntro();}catch(e){}toast('Welcome, '+acc.name);});
+if(!/^[a-z0-9._-]{2,}$/.test(u)){lerr.textContent='Wrong username or password';lerr.hidden=false;return;}
+setLoginState('signing');justSignedIn=true;
+FB.signInWithEmailAndPassword(auth,toEmail(u),lp.value).then(function(){lp.value='';}).catch(function(err){justSignedIn=false;loginError(authMsg(err));lp.select();});});
 document.getElementById('pwShow').addEventListener('click',function(){var on=lp.type==='password';lp.type=on?'text':'password';this.textContent=on?'Hide':'Show';this.setAttribute('aria-label',on?'Hide password':'Show password');});
-var accModal=document.getElementById('accModal'),teamModal=document.getElementById('teamModal');
+setupForm.addEventListener('submit',function(e){e.preventDefault();var er=document.getElementById('serr');er.hidden=true;
+var n=document.getElementById('sName').value.trim(),un=document.getElementById('sUser').value.trim().toLowerCase(),p=document.getElementById('sPass').value,p2=document.getElementById('sPass2').value;
+var msg=!n?'Enter your name':!/^[a-z0-9._-]{2,}$/.test(un)?'Username: at least 2 letters or numbers, no spaces':p.length<6?'Password must be at least 6 characters':p!==p2?'The two passwords don’t match':'';
+if(msg){er.textContent=msg;er.hidden=false;return;}
+settingUp=true;justSignedIn=true;setLoginState('signing');
+FB.createUserWithEmailAndPassword(auth,toEmail(un),p).then(function(cred){var b=FB.writeBatch(fsdb),id=cred.user.uid;
+b.set(FB.doc(fsdb,'users/'+id),{name:n,username:un,role:'manager',active:true,createdAt:Date.now()});
+b.set(FB.doc(fsdb,'meta/setup'),{done:true,owner:id,at:Date.now()});
+return b.commit().then(function(){settingUp=false;onAuth(cred.user);});})
+.catch(function(err){settingUp=false;justSignedIn=false;setLoginState('setup');er.textContent=authMsg(err);er.hidden=false;});});
+
+function onAuth(user){if(settingUp)return;stopListening();
+if(!user){account=null;applyAccount();showLogin();
+FB.getDoc(FB.doc(fsdb,'meta/setup')).then(function(d){setLoginState(d.exists()?'login':'setup');}).catch(function(){setLoginState('login');});return;}
+setLoginState('syncing');showLogin();
+FB.getDoc(FB.doc(fsdb,'users/'+user.uid)).then(function(d){var u=d.exists()?d.data():null;
+if(!u||u.active===false){var m=u?'This account no longer has access. Ask the Market Manager.':'This account is not set up. Ask the Market Manager.';FB.signOut(auth).then(function(){loginError(m);});return;}
+account={id:user.uid,name:u.name,user:u.username,role:u.role};applyAccount();listen();})
+.catch(function(err){console.error(err);FB.signOut(auth).then(function(){loginError(authMsg(err));});});}
+function onDataReady(){loginV.classList.remove('show');
+if(justSignedIn){justSignedIn=false;logIt('home','signed in','',account.id);save();toast('Welcome, '+account.name);}
+var h=hashNow();show(DEPTS[h]?h:'home');try{if(!DEPTS[h])playIntro();}catch(e){}}
+function boot(){showLogin();setLoginState('loading');
+if(!FB_CONFIG){setLoginState('noconfig');return;}
+loadSDK().then(function(){var app=FB.initializeApp(FB_CONFIG);auth=FB.getAuth(app);fsdb=FB.getFirestore(app);FB.onAuthStateChanged(auth,onAuth);})
+.catch(function(e){console.error(e);setLoginState('offline');});}
+
+/* ---------- account menu, password, team ---------- */
+var accModal=document.getElementById('accModal'),teamModal=document.getElementById('teamModal'),pwModal=document.getElementById('pwModal');
 function openAccount(){if(!account)return;document.getElementById('accAvatar').textContent=account.name.charAt(0).toUpperCase();
 document.getElementById('accH').textContent=account.name;document.getElementById('accRole').textContent=roleName(account.role)+' · @'+account.user;openModal(accModal);}
 document.getElementById('whoHome').addEventListener('click',openAccount);
 document.getElementById('whoDept').addEventListener('click',openAccount);
-document.getElementById('logout').addEventListener('click',function(){logIt('home','signed out','',account&&account.id);save();account=null;try{localStorage.removeItem(SKEY);}catch(e){}applyAccount();closeModal(accModal);try{history.replaceState(null,'','#home');}catch(e){}showLogin();});
+document.getElementById('logout').addEventListener('click',function(){var b=this;b.disabled=true;logIt('home','signed out','',account&&account.id);
+flush().then(function(){closeModal(accModal);try{history.replaceState(null,'','#home');}catch(e){}return FB.signOut(auth);}).then(function(){b.disabled=false;});});
+document.getElementById('openPw').addEventListener('click',function(){closeModal(accModal);['pwOld','pwNew','pwNew2'].forEach(function(id){document.getElementById(id).value='';});document.getElementById('pwErr').hidden=true;openModal(pwModal);setTimeout(function(){document.getElementById('pwOld').focus();},50);});
+document.getElementById('pwForm').addEventListener('submit',function(e){e.preventDefault();var er=document.getElementById('pwErr'),o=document.getElementById('pwOld').value,n=document.getElementById('pwNew').value,n2=document.getElementById('pwNew2').value;
+var msg=!o?'Enter your current password':n.length<6?'New password must be at least 6 characters':n!==n2?'The two new passwords don’t match':'';
+if(msg){er.textContent=msg;er.hidden=false;return;}
+var u=auth.currentUser;FB.reauthenticateWithCredential(u,FB.EmailAuthProvider.credential(u.email,o)).then(function(){return FB.updatePassword(u,n);})
+.then(function(){closeModal(pwModal);toast('Password changed');}).catch(function(err){er.textContent=/invalid-credential|wrong-password/.test(err.code||'')?'Current password is wrong':authMsg(err);er.hidden=false;});});
 document.getElementById('openTeam').addEventListener('click',function(){if(!isMgr())return;closeModal(accModal);paintTeam();openModal(teamModal);});
-function paintTeam(){var list=db.users.slice().sort(function(a,b){return(a.role===b.role?0:a.role==='manager'?-1:1)||a.name.localeCompare(b.name);});
+function paintTeam(){var list=db.users.slice().sort(function(a,b){return(b.active-a.active)||(a.role===b.role?0:a.role==='manager'?-1:1)||String(a.name).localeCompare(String(b.name));});
 document.getElementById('teamList').innerHTML=list.map(function(u){var self=account&&u.id===account.id;
-return'<div class="trow" data-uid="'+u.id+'"><span class="avatar" aria-hidden="true">'+esc(u.name.charAt(0).toUpperCase())+'</span><div class="tinfo"><b>'+esc(u.name)+(self?' <span class="role-tag emp">You</span>':'')+'</b><span>@'+esc(u.user)+' · '+roleName(u.role)+'</span></div>'+
-'<div class="tact"><button type="button" class="pw-reset">Reset password</button>'+(self?'':'<button type="button" class="rm" aria-label="Remove '+esc(u.name)+'">Remove</button>')+'</div></div>';}).join('');}
+return'<div class="trow'+(u.active?'':' off')+'" data-uid="'+u.id+'"><span class="avatar" aria-hidden="true">'+esc(String(u.name||'?').charAt(0).toUpperCase())+'</span><div class="tinfo"><b>'+esc(u.name)+(self?' <span class="role-tag emp">You</span>':'')+(u.active?'':' <span class="role-tag off">No access</span>')+'</b><span>@'+esc(u.user)+' · '+roleName(u.role)+'</span></div>'+
+'<div class="tact">'+(self?'':u.active?'<button type="button" class="rm" aria-label="Remove access for '+esc(u.name)+'">Remove access</button>':'<button type="button" class="rs" aria-label="Restore access for '+esc(u.name)+'">Restore</button>')+'</div></div>';}).join('');}
 document.getElementById('teamList').addEventListener('click',function(e){if(!isMgr())return;var row=e.target.closest('.trow');if(!row)return;var u=db.users.filter(function(x){return x.id===row.getAttribute('data-uid');})[0];if(!u)return;
-if(e.target.closest('.pw-reset')){var p=window.prompt('New password for '+u.name+' (at least 4 characters):');if(p==null)return;if(p.length<4){toast('Password must be at least 4 characters');return;}u.pass=hash(p);save();toast('Password updated for '+u.name);}
-else if(e.target.closest('.rm')){if(!window.confirm('Remove '+u.name+'? They will no longer be able to sign in. Their past updates stay in the history.'))return;db.users=db.users.filter(function(x){return x!==u;});save();paintTeam();toast(u.name+' removed');}});
-document.getElementById('teamAdd').addEventListener('submit',function(e){e.preventDefault();if(!isMgr())return;var err=document.getElementById('tErr');
+var rm=e.target.closest('.rm'),rs=e.target.closest('.rs');if(!rm&&!rs)return;
+if(rm&&!window.confirm('Remove access for '+u.name+'? They won’t be able to sign in. Their past updates stay in the history.'))return;
+FB.updateDoc(FB.doc(fsdb,'users/'+u.id),{active:!!rs}).then(function(){setTimeout(paintTeam,60);toast(rs?u.name+' can sign in again':u.name+' no longer has access');}).catch(function(err){toast(authMsg(err));});});
+document.getElementById('teamAdd').addEventListener('submit',function(e){e.preventDefault();if(!isMgr())return;var form=this,err=document.getElementById('tErr'),btn=form.querySelector('.tb.primary');
 var n=document.getElementById('tName').value.trim(),un=document.getElementById('tUser').value.trim().toLowerCase(),p=document.getElementById('tPass').value,r=document.getElementById('tRole').value;
-var msg=!n?'Enter a name':!/^[a-z0-9._-]{2,}$/.test(un)?'Username: at least 2 letters or numbers, no spaces':db.users.some(function(x){return x.user.toLowerCase()===un;})?'This username is already taken':p.length<4?'Password must be at least 4 characters':'';
-if(msg){err.textContent=msg;err.hidden=false;return;}err.hidden=true;
-db.users.push({id:'u-'+uid(),name:n,user:un,pass:hash(p),role:r});save();paintTeam();this.reset();toast(n+' can now sign in as '+un);});
+var msg=!n?'Enter a name':!/^[a-z0-9._-]{2,}$/.test(un)?'Username: at least 2 letters or numbers, no spaces':db.users.some(function(x){return String(x.user).toLowerCase()===un;})?'This username is already taken':p.length<6?'Password must be at least 6 characters':'';
+if(msg){err.textContent=msg;err.hidden=false;return;}err.hidden=true;btn.disabled=true;btn.textContent='Adding…';
+if(!app2)app2=FB.initializeApp(FB_CONFIG,'team-admin');var a2=FB.getAuth(app2);
+FB.createUserWithEmailAndPassword(a2,toEmail(un),p).then(function(cred){return FB.setDoc(FB.doc(fsdb,'users/'+cred.user.uid),{name:n,username:un,role:r,active:true,createdAt:Date.now(),createdBy:account.name}).then(function(){return FB.signOut(a2);});})
+.then(function(){form.reset();setTimeout(paintTeam,60);toast(n+' can now sign in as '+un);}).catch(function(e2){err.textContent=authMsg(e2);err.hidden=false;try{FB.signOut(a2);}catch(x){}})
+.then(function(){btn.disabled=false;btn.textContent='Add account';});});
 
 /* modals */
 var lastFocus=null;
@@ -953,7 +1112,7 @@ function hashNow(){try{return(location.hash||'#home').slice(1);}catch(e){return'
 function go(h){show(h);try{if(hashNow()!==h)history.pushState(null,'','#'+h);}catch(e){}}
 function route(){show(hashNow());}
 function show(h){
-if(!account){showLogin();return;}
+if(!account||!dataReady){showLogin();return;}
 loginV.classList.remove('show');
 if(DEPTS[h]){cur=h;sortKey=null;sortDir=1;q.value='';filter.value='all';msort.value='';
 document.getElementById('dname').textContent=DEPTS[h];document.title=DEPTS[h]+' — Media Market CRM';
@@ -962,7 +1121,7 @@ dept.classList.toggle('is-admin',h==='admin');dept.classList.toggle('is-sales',h
 if(h==='admin')renderLocs();else{setupTable();render();paintLastup();}
 paintWho();home.classList.remove('show');dept.classList.add('show');window.scrollTo(0,0);tbody.querySelectorAll('textarea').forEach(grow);}
 else{dept.classList.remove('show');home.classList.add('show');document.title='Media Market CRM';paintHome();}}
-window.addEventListener('hashchange',route);window.addEventListener('popstate',route);applyAccount();route();
+window.addEventListener('hashchange',route);window.addEventListener('popstate',route);boot();
 })();
 </script>
 </body>
