@@ -417,6 +417,8 @@ body:not(.role-manager):not(.role-director):not(.role-accountant) .approver-or-r
 .who-title::before{content:'· ';}
 @media (max-width:760px){#whoDept .who-title{display:none}}
 body:not(.role-manager):not(.role-director) .act-approver{display:none!important}
+.tinfo .ttl{color:#444}
+.tinfo .et{border:0;background:none;padding:2px 4px;font:inherit;font-size:12px;font-weight:700;text-decoration:underline;cursor:pointer;color:var(--ink);min-height:28px}
 </style>
 </head>
 <body>
@@ -1025,15 +1027,18 @@ function paintTeam(){var active={};db.users.forEach(function(u){active[String(u.
 var users=db.users.slice().sort(function(a,b){return(b.active-a.active)||String(a.name).localeCompare(String(b.name));});
 var pend=db.invites.filter(function(i){return!active[i.id];}).sort(function(a,b){return String(a.name).localeCompare(String(b.name));});
 var html=users.map(function(u){var self=account&&u.id===account.id;
-return'<div class="trow'+(u.active?'':' off')+'" data-uid="'+u.id+'"><span class="avatar" aria-hidden="true">'+esc(String(u.name||'?').charAt(0).toUpperCase())+'</span><div class="tinfo"><b>'+esc(u.name)+(self?' <span class="role-tag emp">You</span>':'')+(u.active?'':' <span class="role-tag off">No access</span>')+'</b><span>@'+esc(u.user)+(u.title?' · '+esc(u.title):'')+'</span>'+
+return'<div class="trow'+(u.active?'':' off')+'" data-uid="'+u.id+'"><span class="avatar" aria-hidden="true">'+esc(String(u.name||'?').charAt(0).toUpperCase())+'</span><div class="tinfo"><b>'+esc(u.name)+(self?' <span class="role-tag emp">You</span>':'')+(u.active?'':' <span class="role-tag off">No access</span>')+'</b><span>@'+esc(u.user)+' · <span class="ttl">'+(u.title?esc(u.title):'No title')+'</span> <button type="button" class="et" aria-label="Edit job title for '+esc(u.name)+'">Edit title</button></span>'+
 (self?'<span>'+ROLES[u.role].n+'</span>':'<select class="urole" aria-label="Role for '+esc(u.name)+'">'+roleOpts(u.role)+'</select>')+'</div>'+
 '<div class="tact">'+(self?'':u.active?'<button type="button" class="rm">Remove access</button>':'<button type="button" class="rs">Restore</button>')+'</div></div>';}).join('')+
-pend.map(function(i){return'<div class="trow" data-inv="'+esc(i.id)+'"><span class="avatar" aria-hidden="true" style="background:#BBB">'+esc(String(i.name||'?').charAt(0).toUpperCase())+'</span><div class="tinfo"><b>'+esc(i.name)+' <span class="role-tag inv">Not activated yet</span></b><span>@'+esc(i.id)+(i.title?' · '+esc(i.title):'')+'</span><select class="irole" aria-label="Role for '+esc(i.name)+'">'+roleOpts(i.role)+'</select></div><div class="tact"><button type="button" class="rmi">Cancel</button></div></div>';}).join('');
+pend.map(function(i){return'<div class="trow" data-inv="'+esc(i.id)+'"><span class="avatar" aria-hidden="true" style="background:#BBB">'+esc(String(i.name||'?').charAt(0).toUpperCase())+'</span><div class="tinfo"><b>'+esc(i.name)+' <span class="role-tag inv">Not activated yet</span></b><span>@'+esc(i.id)+' · <span class="ttl">'+(i.title?esc(i.title):'No title')+'</span> <button type="button" class="et" aria-label="Edit job title for '+esc(i.name)+'">Edit title</button></span><select class="irole" aria-label="Role for '+esc(i.name)+'">'+roleOpts(i.role)+'</select></div><div class="tact"><button type="button" class="rmi">Cancel</button></div></div>';}).join('');
 document.getElementById('teamList').innerHTML=html||'<div class="pempty">No team members yet. Import the Excel file or add people below.</div>';}
 document.getElementById('teamList').addEventListener('change',function(e){if(!isMgr())return;var row=e.target.closest('.trow');if(!row)return;var v=e.target.value;
 if(e.target.classList.contains('urole')){var id=row.getAttribute('data-uid');FB.updateDoc(FB.doc(fsdb,'users/'+id),{role:v}).then(function(){var u=db.users.filter(function(x){return x.id===id;})[0];if(u)u.role=v;toast('Role updated. It applies the next time they sign in.');}).catch(function(err){toast(authMsg(err));});}
 if(e.target.classList.contains('irole')){var iid=row.getAttribute('data-inv');FB.updateDoc(FB.doc(fsdb,'invites/'+iid),{role:v}).then(function(){toast('Role updated');}).catch(function(err){toast(authMsg(err));});}});
 document.getElementById('teamList').addEventListener('click',function(e){if(!isMgr())return;var row=e.target.closest('.trow');if(!row)return;
+if(e.target.closest('.et')){var uidv=row.getAttribute('data-uid'),inv=row.getAttribute('data-inv'),obj=uidv?db.users.filter(function(x){return x.id===uidv;})[0]:db.invites.filter(function(x){return x.id===inv;})[0];if(!obj)return;
+var nt=window.prompt('Job title for '+obj.name+':',obj.title||'');if(nt===null)return;nt=nt.replace(/\s+/g,' ').trim();if(nt===(obj.title||''))return;
+FB.updateDoc(FB.doc(fsdb,(uidv?'users/'+uidv:'invites/'+inv)),{title:nt}).then(function(){obj.title=nt;if(uidv&&account&&uidv===account.id){account.title=nt;paintWho();}paintTeam();toast(obj.name+'’s title updated');}).catch(function(err){toast(authMsg(err));});return;}
 if(e.target.closest('.rmi')){var iid=row.getAttribute('data-inv');if(!window.confirm('Cancel the invitation for @'+iid+'?'))return;FB.deleteDoc(FB.doc(fsdb,'invites/'+iid)).then(function(){db.invites=db.invites.filter(function(x){return x.id!==iid;});paintTeam();}).catch(function(err){toast(authMsg(err));});return;}
 var u=db.users.filter(function(x){return x.id===row.getAttribute('data-uid');})[0];if(!u)return;
 var rm=e.target.closest('.rm'),rs=e.target.closest('.rs');if(!rm&&!rs)return;
