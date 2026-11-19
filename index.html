@@ -416,6 +416,7 @@ body:not(.role-manager):not(.role-director):not(.role-accountant) .approver-or-r
 .who-title{font-weight:500;color:var(--muted);font-size:12px}
 .who-title::before{content:'· ';}
 @media (max-width:760px){#whoDept .who-title{display:none}}
+body:not(.role-manager):not(.role-director) .act-approver{display:none!important}
 </style>
 </head>
 <body>
@@ -479,7 +480,7 @@ body:not(.role-manager):not(.role-director):not(.role-accountant) .approver-or-r
 <button class="bubble" data-go="admin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/></svg><b>Administration</b><small id="c-admin">0 records</small></button>
 <button class="bubble" data-go="perm"><span class="bbadge" id="permBadge" hidden>0</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M9 15l2 2 4-4"/></svg><b>Permissions</b><small id="c-perm">Leave · visits</small></button>
 </nav>
-<section class="activity rv" aria-labelledby="actH"><div class="act-head"><h2 id="actH">Team activity</h2><span>Who updated what, and when</span></div><div class="act-list" id="activity"></div></section>
+<section class="activity rv act-approver" aria-labelledby="actH"><div class="act-head"><h2 id="actH">Team activity</h2><span>Who updated what, and when</span></div><div class="act-list" id="activity"></div></section>
 <button class="replay" id="replay">↻ Replay intro</button>
 </section>
 
@@ -863,7 +864,7 @@ var o=ex||{id:d.id};Object.keys(o).forEach(function(k){if(k!=='id')delete o[k];}
 list.forEach(function(o){if(!seen[o.id]&&shadow[prefix+o.id]===undefined)out.push(o);});
 return out;}
 function listen(){dataReady=false;db=emptyDb();shadow={};
-var need={records:0,locs:0,log:0,star:0,types:0,requests:0};if(isMgr()){need.users=0;need.invites=0;}
+var need={records:0,locs:0,star:0,types:0,requests:0};if(isApprover())need.log=0;if(isMgr()){need.users=0;need.invites=0;}
 function got(k,snap){var first=!need[k];need[k]=1;
 if(!dataReady&&Object.keys(need).every(function(x){return need[x];})){dataReady=true;onDataReady();return;}
 if(dataReady&&!first&&!(snap&&snap.metadata&&snap.metadata.hasPendingWrites))remoteChanged();}
@@ -877,7 +878,7 @@ merged.forEach(function(r){var d=r.dept||r.__d;delete r.dept;delete r.__d;if(m[d
 got('records',snap);},err));
 unsubs.push(FB.onSnapshot(FB.collection(fsdb,'locs'),function(snap){db.locs=mergeList(db.locs,snap,'locs/',clean);
 db.locs.sort(function(a,b){return(a.createdAt||0)-(b.createdAt||0);});got('locs',snap);},err));
-unsubs.push(FB.onSnapshot(FB.query(FB.collection(fsdb,'log'),FB.orderBy('t','desc'),FB.limit(200)),function(snap){
+if(isApprover())unsubs.push(FB.onSnapshot(FB.query(FB.collection(fsdb,'log'),FB.orderBy('t','desc'),FB.limit(200)),function(snap){
 var mine={};db.log.forEach(function(l){if(shadow['log/'+l.id]===undefined)mine[l.id]=l;});
 var list=[];snap.forEach(function(d){var o=d.data();o.id=d.id;shadow['log/'+d.id]=stable(d.data());delete mine[d.id];list.push(o);});
 Object.keys(mine).forEach(function(k){list.push(mine[k]);});
@@ -1173,7 +1174,10 @@ tabs.innerHTML=Object.keys(DEPTS).map(function(k){return'<button data-k="'+k+'">
 tabs.addEventListener('click',function(e){var b=e.target.closest('button');if(b)go(b.getAttribute('data-k'));});
 document.getElementById('back').addEventListener('click',function(){go('home');});
 function needName(fn){if(account)return fn();showLogin();}
-function paintLastup(){var el=document.getElementById('lastup'),L=db.log,hit=null;for(var i=L.length-1;i>=0;i--){if(L[i].d===cur){hit=L[i];break;}}
+function paintLastup(){var el=document.getElementById('lastup'),L=db.log,hit=null;
+if(isApprover()){for(var i=L.length-1;i>=0;i--){if(L[i].d===cur){hit=L[i];break;}}}
+else{var src=cur==='admin'?db.locs:cur==='perm'?db.requests.map(function(r){return{updatedAt:r.decidedAt||r.createdAt,updatedBy:r.decidedBy||r.name};}):(db[cur]||[]);
+src.forEach(function(r){if(r.updatedAt&&(!hit||r.updatedAt>hit.t))hit={t:r.updatedAt,u:r.updatedBy||'Unknown'};});}
 if(!hit){el.className='lastup none';el.innerHTML='No updates recorded yet';return;}
 el.className='lastup';el.innerHTML='Last updated '+agoEl(hit.t)+' by <b>'+esc(hit.u)+'</b>';}
 function stats(k){document.getElementById('stats').innerHTML=k.map(function(x){return'<div class="stat'+(x[2]?' red':'')+'"><span>'+x[0]+'</span><b>'+x[1]+'</b></div>';}).join('');}
