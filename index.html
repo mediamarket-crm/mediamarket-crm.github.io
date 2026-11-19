@@ -413,6 +413,9 @@ body:not(.role-manager):not(.role-director):not(.role-accountant) .approver-or-r
 .trow .tinfo select{border:1px solid var(--line);border-radius:8px;min-height:32px;font:inherit;font-size:12px;padding:0 6px;margin-top:4px;max-width:180px}
 .role-tag.inv{background:#FDF0DC;color:var(--warn)}
 @media (max-width:560px){.imp-row{grid-template-columns:minmax(0,1fr)}.imp-head{display:none}}
+.who-title{font-weight:500;color:var(--muted);font-size:12px}
+.who-title::before{content:'· ';}
+@media (max-width:760px){#whoDept .who-title{display:none}}
 </style>
 </head>
 <body>
@@ -921,8 +924,8 @@ function applyAccount(){me=account?account.name:'';var r=account?account.role:''
 ['manager','director','accountant','employee'].forEach(function(x){document.body.classList.toggle('role-'+x,r===x);});paintWho();}
 function paintWho(){['whoHome','whoDept'].forEach(function(id){var b=document.getElementById(id);if(!b)return;b.classList.remove('unset');
 var rn=account?(ROLES[account.role]||ROLES.employee).n:'';
-b.querySelector('span').innerHTML=account?esc(account.name)+' <span class="role-tag'+(account.role==='employee'?' emp':'')+'">'+rn+'</span>':'';
-b.setAttribute('aria-label',account?'Signed in as '+account.name+', '+rn+'. Account menu':'Account');});}
+b.querySelector('span').innerHTML=account?esc(account.name)+(account.title?' <span class="who-title">'+esc(account.title)+'</span>':'')+' <span class="role-tag'+(account.role==='employee'?' emp':'')+'">'+rn+'</span>':'';
+b.setAttribute('aria-label',account?'Signed in as '+account.name+(account.title?', '+account.title:'')+', '+rn+'. Account menu':'Account');});}
 
 /* ---------- sign-in screen ---------- */
 var loginV=document.getElementById('login'),lu=document.getElementById('lu'),lp=document.getElementById('lp'),lerr=document.getElementById('lerr');
@@ -996,7 +999,7 @@ loadSDK().then(function(){var app=FB.initializeApp(FB_CONFIG);auth=FB.getAuth(ap
 /* ---------- account menu, password, team ---------- */
 var accModal=document.getElementById('accModal'),teamModal=document.getElementById('teamModal'),pwModal=document.getElementById('pwModal');
 function openAccount(){if(!account)return;document.getElementById('accAvatar').textContent=account.name.charAt(0).toUpperCase();
-document.getElementById('accH').textContent=account.name;document.getElementById('accRole').textContent=roleName(account.role)+' · @'+account.user;openModal(accModal);}
+document.getElementById('accH').textContent=account.name;document.getElementById('accRole').textContent=(account.title?account.title+' + ':'')+(ROLES[account.role]||ROLES.employee).n+' · @'+account.user;openModal(accModal);}
 document.getElementById('whoHome').addEventListener('click',openAccount);
 document.getElementById('whoDept').addEventListener('click',openAccount);
 document.getElementById('logout').addEventListener('click',function(){var b=this;b.disabled=true;logIt('home','signed out','',account&&account.id);
