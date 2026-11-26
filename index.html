@@ -598,6 +598,11 @@ td input[type=number]::-webkit-inner-spin-button,td input[type=number]::-webkit-
 .deck-bar .tb{color:var(--ink)}
 .deck-bar .tb.primary{background:var(--lime);border-color:var(--lime);color:var(--petrol)}
 @media (max-width:760px){td input[type=number]{padding:12px 0}#tableView td select[data-f=stage],#tableView td select[data-f=mstatus],#tableView td select[data-f=response],#tableView td select[data-f=source]{min-width:0}}
+.net-pill{position:fixed;left:50%;bottom:78px;transform:translateX(-50%);z-index:9999;max-width:calc(100vw - 32px);padding:10px 18px;border-radius:999px;font-size:13px;line-height:1.4;box-shadow:0 6px 24px rgba(0,0,0,.18);text-align:center}
+.net-pill.off{background:#FFF4D6;color:#5A4300;border:1px solid #F0D28A}
+.net-pill.on{background:#073B3A;color:#FAF8F2}
+.net-pill b{font-weight:800}
+.net-pill[hidden]{display:none}
 </style>
 </head>
 <body>
@@ -1213,7 +1218,7 @@ if(justSignedIn){justSignedIn=false;logIt('home','signed in','',account.id);save
 var h=hashNow();show(DEPTS[h]?h:'home');try{if(!DEPTS[h])playIntro();}catch(e){}}
 function boot(){showLogin();setLoginState('loading');
 if(!FB_CONFIG){setLoginState('noconfig');return;}
-loadSDK().then(function(){var app=FB.initializeApp(FB_CONFIG);auth=FB.getAuth(app);fsdb=FB.getFirestore(app);FB.onAuthStateChanged(auth,onAuth);})
+loadSDK().then(function(){var app=FB.initializeApp(FB_CONFIG);auth=FB.getAuth(app);fsdb=initDb(app);FB.onAuthStateChanged(auth,onAuth);})
 .catch(function(e){console.error(e);setLoginState('offline');});}
 
 /* ---------- account menu, password, team ---------- */
@@ -1793,12 +1798,12 @@ document.getElementById('dealBoards').addEventListener('click',function(){var r=
 dealModal.addEventListener('click',function(e){if(e.target===dealModal||e.target.closest('[data-close]')){if(cur==='sales'&&!dept.classList.contains('x-on'))render();}});
 
 /* --- helper (Apps Script) --- */
-function helper(action,payload){if(!HELPER_URL)return Promise.reject(new Error('helper-off'));
+function helper(action,payload){if(!HELPER_URL)return Promise.reject(new Error('helper-off'));if(navigator.onLine===false)return Promise.reject(new Error('offline'));
 var u=auth&&auth.currentUser;if(!u)return Promise.reject(new Error('not-signed-in'));
 return(FB.getIdToken?FB.getIdToken(u):u.getIdToken()).then(function(t){payload=payload||{};payload.token=t;payload.action=action;
 return fetch(HELPER_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload),redirect:'follow'});})
 .then(function(r){return r.json();}).then(function(j){if(!j||!j.ok)throw new Error(j&&j.error||'failed');return j;});}
-function helperMsg(e){var m=String(e&&e.message||e);if(m==='helper-off')return'The helper service is not connected yet.';if(m==='site-unreachable')return'Couldn’t open that website. Check the link.';
+function helperMsg(e){var m=String(e&&e.message||e);if(m==='offline'||m==='Failed to fetch')return'you’re offline right now. You can add the receipt later from Edit';if(m==='helper-off')return'The helper service is not connected yet.';if(m==='site-unreachable')return'Couldn’t open that website. Check the link.';
 if(m==='bad-url'||m==='no-url')return'Type the company website, e.g. company.com';if(m==='not-signed-in')return'Sign in again and retry.';if(m==='not-allowed')return'You can’t open this receipt.';
 if(/Failed to fetch|NetworkError|Load failed/i.test(m))return'No connection to the helper. Check the internet and try again.';return'Something went wrong ('+m+').';}
 
@@ -2121,6 +2126,27 @@ return seesFinance()?[s1,s2]:[s1];}
 function exportFinance(k){if(!canPay())return;try{download(MMXLSX.build(finSheets(k)),'MediaMarket-Finance-'+(k||'all')+'-'+stamp()+'.xlsx');toast('Excel file downloaded');}catch(e){console.error(e);toast('Export failed');}}
 
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&dealRow&&cur==='sales'&&!dept.classList.contains('x-on'))setTimeout(render,0);});
+
+/* ---------- offline: keep changes on this device until the internet is back ---------- */
+function softWrite(p){return new Promise(function(res,rej){var done=false;
+function fin(){if(!done){done=true;res();}}
+p.then(function(v){if(!done){done=true;res(v);}},function(e){if(!done){done=true;rej(e);}else{toast(authMsg(e));}});
+setTimeout(fin,navigator.onLine===false?250:5000);});}
+function initDb(app){var d=null;
+try{if(FB.initializeFirestore&&FB.persistentLocalCache){d=FB.initializeFirestore(app,{localCache:FB.persistentLocalCache(FB.persistentMultipleTabManager?{tabManager:FB.persistentMultipleTabManager()}:{})});}}catch(e){console.warn('offline cache off',e);d=null;}
+if(!d)d=FB.getFirestore(app);
+['setDoc','updateDoc','deleteDoc'].forEach(function(n){var f=FB[n];if(f&&!f._soft){FB[n]=function(){return softWrite(f.apply(null,arguments));};FB[n]._soft=true;}});
+var wb=FB.writeBatch;if(wb&&!wb._soft){FB.writeBatch=function(){var b=wb.apply(null,arguments),c=b.commit;b.commit=function(){return softWrite(c.call(b));};return b;};FB.writeBatch._soft=true;}
+return d;}
+(function(){var pill=null;
+function show(off){if(!pill){pill=document.createElement('div');pill.id='netPill';document.body.appendChild(pill);}
+if(off){pill.className='net-pill off';pill.innerHTML='<b>Offline</b> · your changes are saved on this device and will upload when the internet is back';pill.hidden=false;}
+else{pill.className='net-pill on';pill.innerHTML='<b>Back online</b> · uploading your changes…';pill.hidden=false;
+var hide=function(){pill.innerHTML='<b>All changes saved</b>';setTimeout(function(){pill.hidden=true;},2500);};
+if(fsdb&&FB.waitForPendingWrites)FB.waitForPendingWrites(fsdb).then(hide,hide);else setTimeout(hide,1500);}}
+window.addEventListener('offline',function(){show(true);});
+window.addEventListener('online',function(){show(false);});
+if(navigator.onLine===false)document.addEventListener('DOMContentLoaded',function(){show(true);});})();
 
 /* ---------- router ---------- */
 function hashNow(){try{return(location.hash||'#home').slice(1);}catch(e){return'home';}}
