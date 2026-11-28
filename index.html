@@ -636,6 +636,10 @@ td.unas .csel.own{color:var(--ink);font-weight:700}
 .owner-ro.unas-t{color:var(--muted);font-style:italic}
 .csel.own{min-width:150px}
 .tsel{display:flex;gap:6px;flex-wrap:wrap}
+.pct-in{position:relative;display:block}
+.pct-in input{width:100%;box-sizing:border-box;padding-right:34px}
+.pct-in i{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-style:normal;font-weight:700;color:var(--muted);pointer-events:none}
+#plConv{margin:10px 0 0}
 </style>
 </head>
 <body>
@@ -1977,14 +1981,14 @@ var cost=L.reduce(function(a,r){return a+num(r.cpl);},0),wc=L.filter(function(r)
 return{leads:L.length,cost:cost,cpl:wc?cost/wc:0,sent:conv,won:won};}
 function renderPlan(){var p=curPlan(),a=planActual();
 var bud=num(p.budget),lt=num(p.leadsTarget);
-stats([['Leads',a.leads+(lt?' / '+lt:'')],['Sent to sales',a.sent],['Converted to deals',a.won],['Cost per lead',a.cpl?egp(a.cpl):'—']]);
+stats([['Leads',a.leads+(lt?' / '+lt:'')],['Sent to sales',a.sent],['Converted to deals',a.won+(a.leads?' · '+convPct(a)+'%':'')],['Cost per lead',a.cpl?egp(a.cpl):'—']]);
 xView.innerHTML='<div class="xtools"><div class="ystep"><button type="button" id="qPrev" aria-label="Previous quarter">‹</button><b>'+qLabel(planQ)+'</b><button type="button" id="qNext" aria-label="Next quarter">›</button></div>'+
 '<span class="psum grow">'+(p.updatedAt?'Saved · last edit by <b>'+esc(p.updatedBy||'')+'</b> '+agoEl(p.updatedAt):'Fill in the plan for this quarter. It saves automatically.')+'</span>'+
 '<button type="button" class="tb primary" id="planDeck">Generate plan deck</button></div>'+
 '<div class="plan" id="planForm">'+
 '<div class="xcard"><h3 class="xh">Targets</h3><div class="pl4">'+
 pf('leadsTarget','Leads target','number',p.leadsTarget)+pf('budget','Marketing budget (EGP)','number',p.budget)+
-'<label class="field">Target cost per lead<input id="plCpl" disabled value="'+(bud&&lt?egp(bud/lt):'Budget ÷ leads')+'"></label>'+pf('convTarget','Leads → deals target (%)','number',p.convTarget)+'</div></div>'+
+'<label class="field">Target cost per lead<input id="plCpl" disabled value="'+(bud&&lt?egp(bud/lt):'Budget ÷ leads')+'"></label>'+'<label class="field">Leads → deals target<span class="pct-in"><input data-p="convTarget" type="number" min="0" max="100" step="any" inputmode="decimal" value="'+esc(p.convTarget)+'" placeholder="15"><i>%</i></span></label>'+'</div><p class="psum" id="plConv"></p></div>'+
 '<div class="xgrid mt"><div class="xcard">'+pa('situation','Where we are now','What happened last quarter, what’s working, what isn’t.',p.situation)+'</div><div class="xcard">'+pa('audience','Target audience','Who we want to reach: industries, company size, areas.',p.audience)+'</div></div>'+
 '<div class="xcard mt">'+pa('strategy','Strategy','How we will reach the targets this quarter.',p.strategy)+'</div>'+
 '<div class="xcard mt"><h3 class="xh">Company goals &amp; key results</h3><div class="pl-rows" id="plGoals">'+p.goals.map(function(g,i){var pr=num(g.target)?Math.min(100,Math.round(num(g.actual)/num(g.target)*100)):0;
@@ -2006,7 +2010,9 @@ planCalc(p);
 f.addEventListener('click',function(e){var ad=e.target.closest('[data-add]'),rm=e.target.closest('[data-rm]');
 if(ad){var k=ad.getAttribute('data-add');p[k].push(k==='goals'?{goal:'',kr:'',target:'',actual:''}:{name:'',goal:'',channel:'',budget:'',start:'',end:'',owner:me||'',status:'Planned'});savePlan();renderPlan();var rows=document.querySelectorAll(k==='goals'?'#plGoals .pl-row':'#plCamps .pl-row');if(rows.length)rows[rows.length-1].querySelector('input').focus();}
 if(rm){var i=+rm.closest('.pl-row').getAttribute('data-i'),k2=rm.getAttribute('data-rm');if(!window.confirm('Remove this '+(k2==='goals'?'goal':'campaign')+'?'))return;p[k2].splice(i,1);savePlan();renderPlan();}});}
+function convPct(a){return a.leads?Math.round(a.won/a.leads*1000)/10:0;}
 function planCalc(p,row){var b=num(p.budget),l=num(p.leadsTarget),c=document.getElementById('plCpl');if(c)c.value=b&&l?egp(b/l):'Budget ÷ leads';
+var cv=document.getElementById('plConv');if(cv){var ct=num(p.convTarget),a=planActual();cv.innerHTML=(ct?'Target <b>'+ct+'%</b>'+(l?' = about <b>'+Math.round(l*ct/100)+(Math.round(l*ct/100)===1?' deal':' deals')+'</b> from '+l+' leads':' of the leads should become won deals'):'Out of every 100 leads, how many should become won deals? Type the number, e.g. 15.')+' · Actual so far: <b>'+convPct(a)+'%</b> ('+a.won+' of '+a.leads+' leads converted)';}
 var t=document.getElementById('plTot');if(t)t.innerHTML='Campaign budgets total <b>'+egp(p.campaigns.reduce(function(s,x){return s+num(x.budget);},0))+'</b>'+(b?' of '+egp(b):'');
 if(row&&row.parentNode&&row.parentNode.id==='plGoals'){var g=p.goals[+row.getAttribute('data-i')],pr=num(g.target)?Math.min(100,Math.round(num(g.actual)/num(g.target)*100)):0;row.querySelector('.pl-prog b').style.width=pr+'%';row.querySelector('.pl-prog span').textContent=pr+'%';}}
 function flushPlan(){if(planTimer){clearTimeout(planTimer);planTimer=null;var p=planEditing.p,id=planEditing.id;p.updatedAt=Date.now();p.updatedBy=who();db.plans[id]=JSON.parse(JSON.stringify(p));FB.setDoc(FB.doc(fsdb,'plans/'+id),p).catch(function(e){toast(authMsg(e));});}}
@@ -2019,7 +2025,7 @@ h.push(slide('s-dark s-cover','<div class="s-badge">'+logoImg()+'</div><div clas
 h.push(slide('','<div class="s-kicker">Where we are now</div><h2 class="s-h">'+E('Situation &amp; audience')+'</h2><div class="s-line"></div><div class="s-grid s-grid2"><div class="s-card"><b>Situation</b>'+E(esc(p.situation||'[Add the situation]'))+'</div><div class="s-card"><b>Target audience</b>'+E(esc(p.audience||'[Add the target audience]'))+'</div></div>',foot));
 h.push(slide('','<div class="s-kicker">Goals &amp; key results</div><h2 class="s-h">'+E('What this quarter commits to')+'</h2><div class="s-line"></div><div class="s-table">'+(p.goals.length?p.goals.map(function(g){return'<div class="s-row"><span><b>'+E(esc(g.goal||''))+'</b> · '+E(esc(g.kr||''))+'</span><span>'+E(esc(String(g.target||'')))+'</span></div>';}).join(''):'<p class="s-p">'+E('[Add goals]')+'</p>')+'</div>',foot));
 h.push(slide('','<div class="s-kicker">Targets</div><h2 class="s-h">'+E('The numbers we will hit')+'</h2><div class="s-line"></div><div class="s-grid s-grid4">'+
-[['Leads',lt||'—'],['Budget',bud?kEgp(bud):'—'],['Cost per lead',bud&&lt?egp(bud/lt):'—'],['Leads → deals',p.convTarget?p.convTarget+'%':'—']].map(function(x){return'<div class="s-card"><span class="s-lbl">'+x[0]+'</span><span class="s-num">'+E(String(x[1]))+'</span></div>';}).join('')+'</div>',foot));
+[['Leads',lt||'—'],['Budget',bud?kEgp(bud):'—'],['Cost per lead',bud&&lt?egp(bud/lt):'—'],['Leads → deals',(p.convTarget?p.convTarget+'%':'—')+(planActual().leads?' · now '+convPct(planActual())+'%':'')]].map(function(x){return'<div class="s-card"><span class="s-lbl">'+x[0]+'</span><span class="s-num">'+E(String(x[1]))+'</span></div>';}).join('')+'</div>',foot));
 h.push(slide('s-dark','<div class="s-kicker">Strategy</div><h2 class="s-h">'+E('How we get there')+'</h2><div class="s-line"></div><p class="s-p s-lead">'+E(esc(p.strategy||'[Add the strategy]'))+'</p>',foot));
 var ch={};p.campaigns.forEach(function(c){var k=c.channel||'Other';ch[k]=(ch[k]||0)+num(c.budget);});var cht=Object.keys(ch).reduce(function(s,k){return s+ch[k];},0)||1;
 h.push(slide('','<div class="s-kicker">Channel mix &amp; budget</div><h2 class="s-h">'+E(kEgp(cht===1?0:cht)+' across '+Object.keys(ch).length+(Object.keys(ch).length===1?' channel':' channels'))+'</h2><div class="s-line"></div><div class="s-bars">'+Object.keys(ch).sort(function(x,y){return ch[y]-ch[x];}).map(function(k){var pc=Math.round(ch[k]/cht*100);return'<div class="s-bar"><span>'+esc(k)+'</span><i><b style="width:'+pc+'%"></b></i><em>'+egp(ch[k])+' · '+pc+'%</em></div>';}).join('')+'</div>',foot));
