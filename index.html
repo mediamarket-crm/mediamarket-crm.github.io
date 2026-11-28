@@ -416,7 +416,7 @@ body:not(.role-manager):not(.role-director):not(.role-accountant) .approver-or-r
 .who-title{font-weight:500;color:var(--muted);font-size:12px}
 .who-title::before{content:'· ';}
 @media (max-width:760px){#whoDept .who-title{display:none}}
-body:not(.role-manager):not(.role-director) .act-approver{display:none!important}
+body:not(.role-manager) .act-approver{display:none!important}
 .tinfo .ttl{color:#182725}
 .tinfo .et{border:0;background:none;padding:2px 4px;font:inherit;font-size:12px;font-weight:700;text-decoration:underline;cursor:pointer;color:var(--ink);min-height:28px}
 
@@ -629,6 +629,12 @@ td input[type=number]::-webkit-inner-spin-button,td input[type=number]::-webkit-
 .s-card-d b{color:#C8F169}
 .s-opener{font-size:2cqw;line-height:1.4;font-weight:600;color:#fff;max-width:80cqw;margin:0}
 .s-brief.s-dark .s-card{max-height:24cqw}
+/* ownership */
+td.unas{box-shadow:inset 4px 0 0 var(--coral)}
+td.unas .csel.own{color:var(--ink);font-weight:700}
+.owner-ro{display:block;padding:12px;font-size:14px}
+.owner-ro.unas-t{color:var(--muted);font-style:italic}
+.csel.own{min-width:150px}
 </style>
 </head>
 <body>
@@ -687,7 +693,7 @@ td input[type=number]::-webkit-inner-spin-button,td input[type=number]::-webkit-
 </div>
 <nav class="bubbles" aria-label="Departments">
 <button class="bubble" data-go="marketing"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg><b>Marketing<br>Department</b><small id="c-marketing">0 records</small></button>
-<button class="bubble" data-go="sales"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg><b>Sales<br>Department</b><small id="c-sales">0 records</small></button>
+<button class="bubble" data-go="sales"><span class="bbadge" id="salesBadge" hidden>0</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg><b>Sales<br>Department</b><small id="c-sales">0 records</small></button>
 <button class="bubble" data-go="finance"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h3"/></svg><b>Finance<br>Department</b><small id="c-finance">0 records</small></button>
 <button class="bubble" data-go="admin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/></svg><b>Administration</b><small id="c-admin">0 records</small></button>
 <button class="bubble" data-go="perm"><span class="bbadge" id="permBadge" hidden>0</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M9 15l2 2 4-4"/></svg><b>Permissions</b><small id="c-perm">Leave · visits</small></button>
@@ -1080,12 +1086,12 @@ var FB_CONFIG=/*FIREBASE_CONFIG*/{apiKey:"AIzaSyAOY5F2rnSHSFxF5eagYe8wus3d6l8Rks
 var FB_VERSION='13.4.0';
 var EMAIL_DOMAIN='@mediamarket-crm.app';
 var FB=null,fsdb=null,auth=null,app2=null,shadow={},syncTimer=null,unsubs=[],dataReady=false,justSignedIn=false,settingUp=false,remoteTimer=null,renderWhenIdle=false;
-function emptyDb(){return{marketing:[],sales:[],finance:[],locs:[],types:[],log:[],star:{},users:[],invites:[],requests:[],expenses:[],invoices:[],plans:{},deck:{}};}
+function emptyDb(){return{team:[],marketing:[],sales:[],finance:[],locs:[],types:[],log:[],star:{},users:[],invites:[],requests:[],expenses:[],invoices:[],plans:{},deck:{}};}
 function stable(o){if(o===null||typeof o!=='object')return JSON.stringify(o);if(Array.isArray(o))return'['+o.map(stable).join(',')+']';
 return'{'+Object.keys(o).filter(function(k){return o[k]!==undefined;}).sort().map(function(k){return JSON.stringify(k)+':'+stable(o[k]);}).join(',')+'}';}
 function clean(o){var c={};Object.keys(o||{}).forEach(function(k){if(k!=='id'&&o[k]!==undefined)c[k]=o[k];});return c;}
 function localDocs(){var out={};
-['marketing','sales','finance'].forEach(function(d){db[d].forEach(function(r){var c=clean(r);c.dept=d;out['records/'+r.id]=c;});});
+['marketing','sales','finance'].forEach(function(d){db[d].forEach(function(r){if(r.owner===undefined&&!isMgr())r.owner=account.id;var c=clean(r);c.dept=d;out['records/'+r.id]=c;});});
 db.locs.forEach(function(l){out['locs/'+l.id]=clean(l);});
 db.log.forEach(function(l){if(l.u===who())out['log/'+l.id]=clean(l);});
 if(isMgr()&&db.star&&db.star.name!==undefined)out['meta/star']=clean(db.star);
@@ -1093,7 +1099,7 @@ out['meta/types']={list:db.types.slice()};
 return out;}
 function save(){if(!fsdb||!account||!dataReady)return;clearTimeout(syncTimer);syncTimer=setTimeout(flush,450);}
 function flush(){clearTimeout(syncTimer);syncTimer=null;if(!fsdb||!account)return Promise.resolve();
-var cur=localDocs(),jobs=[];
+syncPicks();var cur=localDocs(),jobs=[];
 Object.keys(cur).forEach(function(p){var j=stable(cur[p]);if(shadow[p]===j)return;if(p==='meta/types'&&!shadow[p]&&!db.types.length)return;
 shadow[p]=j;jobs.push(FB.setDoc(FB.doc(fsdb,p),cur[p]));});
 Object.keys(shadow).forEach(function(p){if(cur[p]||!/^(records|locs)\//.test(p))return;delete shadow[p];jobs.push(FB.deleteDoc(FB.doc(fsdb,p)));});
@@ -1106,24 +1112,31 @@ var keepLocal=ex&&isDirty(p,toLocal(ex))&&syncTimer;
 shadow[p]=stable(data);
 if(keepLocal){out.push(ex);return;}
 var o=ex||{id:d.id};Object.keys(o).forEach(function(k){if(k!=='id')delete o[k];});Object.assign(o,data);out.push(o);});
-list.forEach(function(o){if(!seen[o.id]&&shadow[prefix+o.id]===undefined)out.push(o);});
+list.forEach(function(o){if(seen[o.id])return;if(shadow[prefix+o.id]===undefined)out.push(o);else delete shadow[prefix+o.id];});
 return out;}
 function listen(){dataReady=false;db=emptyDb();shadow={};
-var need={records:0,locs:0,star:0,types:0,requests:0,expenses:0,plans:0,deck:0};if(seesAllRequests())need.invoices=0;if(isApprover())need.log=0;if(isMgr()){need.users=0;need.invites=0;}
+var need={records:0,locs:0,star:0,types:0,requests:0,expenses:0,plans:0,deck:0};if(seesAllRequests())need.invoices=0;if(isMgr())need.log=0;if(isMgr()){need.users=0;need.invites=0;}
 function got(k,snap){var first=!need[k];need[k]=1;
 if(!dataReady&&Object.keys(need).every(function(x){return need[x];})){dataReady=true;onDataReady();return;}
 if(dataReady&&!first&&!(snap&&snap.metadata&&snap.metadata.hasPendingWrites))remoteChanged();}
 function err(e){console.error(e);toast('Lost connection to the server. Retrying…');}
-unsubs.push(FB.onSnapshot(FB.collection(fsdb,'records'),function(snap){
+var recQ=isMgr()?[['all',FB.collection(fsdb,'records')]]:[['own',FB.query(FB.collection(fsdb,'records'),FB.where('owner','==',account.id))]];
+if(!isMgr()&&account.role==='salesdir')recQ.push(['sales',FB.query(FB.collection(fsdb,'records'),FB.where('dept','==','sales'))]);
+if(!isMgr()&&account.role==='mktdir')recQ.push(['marketing',FB.query(FB.collection(fsdb,'records'),FB.where('dept','==','marketing'))]);
+if(!isMgr()&&seesAllRequests())recQ.push(['finance',FB.query(FB.collection(fsdb,'records'),FB.where('dept','==','finance'))]);
+var recC={},recGot={};
+recQ.forEach(function(qq){unsubs.push(FB.onSnapshot(qq[1],function(snap1){var mm={};snap1.forEach(function(d){mm[d.id]=d;});recC[qq[0]]=mm;recGot[qq[0]]=1;if(Object.keys(recGot).length<recQ.length)return;
+var u={};recQ.forEach(function(x){var c=recC[x[0]]||{};Object.keys(c).forEach(function(k){u[k]=c[k];});});var docs=Object.keys(u).map(function(k){return u[k];});
+var snap={forEach:function(f){docs.forEach(f);},metadata:snap1.metadata};
 var all=[].concat(db.marketing.map(function(r){r.__d='marketing';return r;}),db.sales.map(function(r){r.__d='sales';return r;}),db.finance.map(function(r){r.__d='finance';return r;}));
 var merged=mergeList(all,snap,'records/',function(r){var c=clean(r);delete c.__d;c.dept=r.__d;return c;});
 var m={marketing:[],sales:[],finance:[]};
 merged.forEach(function(r){var d=r.dept||r.__d;delete r.dept;delete r.__d;if(m[d])m[d].push(r);});
 ['marketing','sales','finance'].forEach(function(d){m[d].sort(function(a,b){return(a.createdAt||0)-(b.createdAt||0);});db[d]=m[d];});
-got('records',snap);},err));
+got('records',snap);paintSalesBadge();},err));});
 unsubs.push(FB.onSnapshot(FB.collection(fsdb,'locs'),function(snap){db.locs=mergeList(db.locs,snap,'locs/',clean);
 db.locs.sort(function(a,b){return(a.createdAt||0)-(b.createdAt||0);});got('locs',snap);},err));
-if(isApprover())unsubs.push(FB.onSnapshot(FB.query(FB.collection(fsdb,'log'),FB.orderBy('t','desc'),FB.limit(200)),function(snap){
+if(isMgr())unsubs.push(FB.onSnapshot(FB.query(FB.collection(fsdb,'log'),FB.orderBy('t','desc'),FB.limit(200)),function(snap){
 var mine={};db.log.forEach(function(l){if(shadow['log/'+l.id]===undefined)mine[l.id]=l;});
 var list=[];snap.forEach(function(d){var o=d.data();o.id=d.id;shadow['log/'+d.id]=stable(d.data());delete mine[d.id];list.push(o);});
 Object.keys(mine).forEach(function(k){list.push(mine[k]);});
@@ -1131,7 +1144,8 @@ list.sort(function(a,b){return a.t-b.t;});db.log=list;got('log',snap);},err));
 unsubs.push(FB.onSnapshot(FB.doc(fsdb,'meta/star'),function(d){db.star=d.exists()?d.data():{};if(d.exists())shadow['meta/star']=stable(d.data());got('star',d);},err));
 unsubs.push(FB.onSnapshot(FB.doc(fsdb,'meta/types'),function(d){var l=d.exists()&&Array.isArray(d.data().list)?d.data().list:[];
 db.types=l;if(d.exists())shadow['meta/types']=stable(d.data());got('types',d);},err));
-if(isMgr())unsubs.push(FB.onSnapshot(FB.collection(fsdb,'users'),function(snap){var u=[];snap.forEach(function(d){var o=d.data();u.push({id:d.id,name:o.name,title:o.title||'',user:o.username,role:o.role||'employee',active:o.active!==false});});db.users=u;got('users',snap);},err));
+if(isMgr())unsubs.push(FB.onSnapshot(FB.collection(fsdb,'users'),function(snap){var u=[];snap.forEach(function(d){var o=d.data();u.push({id:d.id,name:o.name,title:o.title||'',user:o.username,role:o.role||'employee',active:o.active!==false});});db.users=u;got('users',snap);publishTeam();},err));
+if(!isMgr())unsubs.push(FB.onSnapshot(FB.doc(fsdb,'meta/team'),function(d){db.team=d.exists()&&Array.isArray(d.data().list)?d.data().list:[];},function(e){console.warn(e);}));
 if(isMgr())unsubs.push(FB.onSnapshot(FB.collection(fsdb,'invites'),function(snap){var u=[];snap.forEach(function(d){var o=d.data();o.id=d.id;u.push(o);});db.invites=u;got('invites',snap);},err));
 var rq=seesAllRequests()?FB.collection(fsdb,'requests'):FB.query(FB.collection(fsdb,'requests'),FB.where('uid','==',account.id));
 unsubs.push(FB.onSnapshot(rq,function(snap){var l=[];snap.forEach(function(d){var o=d.data();o.id=d.id;l.push(o);});l.sort(function(a,b){return(b.createdAt||0)-(a.createdAt||0);});db.requests=l;got('requests',snap);},err));
@@ -1165,14 +1179,14 @@ return'Something went wrong ('+(c||'unknown')+'). Try again.';}
 
 /* ---------- account state & roles ---------- */
 var account=null;
-var ROLES={manager:{n:'Admin',d:'Admin · full access, approvals and reports'},director:{n:'Approver',d:'Approver · approves leave and visits'},accountant:{n:'Accounts',d:'Accounts · movements report for payroll'},employee:{n:'Employee',d:'Employee'}};
+var ROLES={manager:{n:'Admin',d:'Admin · full access, approvals and reports'},director:{n:'Approver',d:'Approver · approves leave and visits'},accountant:{n:'Accounts',d:'Accounts · movements report for payroll'},employee:{n:'Employee',d:'Employee'},salesdir:{n:'Sales Director',d:'Sales Director · sees and assigns all sales deals'},mktdir:{n:'Marketing Director',d:'Marketing Director · sees and assigns all marketing leads'}};
 function isMgr(){return!!account&&account.role==='manager';}
 function isApprover(){return!!account&&(account.role==='manager'||account.role==='director');}
 function canReport(){return!!account&&(account.role==='manager'||account.role==='accountant');}
 function seesAllRequests(){return!!account&&account.role!=='employee';}
 function roleName(r){return(ROLES[r]||ROLES.employee).d;}
 function applyAccount(){me=account?account.name:'';var r=account?account.role:'';
-['manager','director','accountant','employee'].forEach(function(x){document.body.classList.toggle('role-'+x,r===x);});paintWho();}
+['manager','director','accountant','employee','salesdir','mktdir'].forEach(function(x){document.body.classList.toggle('role-'+x,r===x);});paintWho();}
 function paintWho(){['whoHome','whoDept'].forEach(function(id){var b=document.getElementById(id);if(!b)return;b.classList.remove('unset');
 var rn=account?(ROLES[account.role]||ROLES.employee).n:'';
 b.querySelector('span').innerHTML=account?esc(account.name)+(account.title?' <span class="who-title">'+esc(account.title)+'</span>':'')+' <span class="role-tag'+(account.role==='employee'?' emp':'')+'">'+rn+'</span>':'';
@@ -1239,7 +1253,7 @@ FB.getDoc(FB.doc(fsdb,'users/'+user.uid)).then(function(d){var u=d.exists()?d.da
 if(!u||u.active===false){var m=u?'This account no longer has access. Ask the Market Manager.':'This account is not set up. Ask the Market Manager.';FB.signOut(auth).then(function(){loginError(m);});return;}
 account={id:user.uid,name:u.name,user:u.username,role:u.role||'employee',title:u.title||''};applyAccount();listen();})
 .catch(function(err){console.error(err);FB.signOut(auth).then(function(){loginError(authMsg(err));});});}
-function onDataReady(){loginV.classList.remove('show');
+function onDataReady(){migrateOwners();publishTeam();loginV.classList.remove('show');
 if(justSignedIn){justSignedIn=false;logIt('home','signed in','',account.id);save();toast('Welcome, '+account.name);}
 var h=hashNow();show(DEPTS[h]?h:'home');try{if(!DEPTS[h])playIntro();}catch(e){}}
 function boot(){showLogin();setLoginState('loading');
@@ -1262,14 +1276,14 @@ if(msg){er.textContent=msg;er.hidden=false;return;}
 var u=auth.currentUser;FB.reauthenticateWithCredential(u,FB.EmailAuthProvider.credential(u.email,o)).then(function(){return FB.updatePassword(u,n);})
 .then(function(){closeModal(pwModal);toast('Password changed');}).catch(function(err){er.textContent=/invalid-credential|wrong-password/.test(err.code||'')?'Current password is wrong':authMsg(err);er.hidden=false;});});
 document.getElementById('openTeam').addEventListener('click',function(){if(!isMgr())return;closeModal(accModal);fillRoleSelect(document.getElementById('tRole'),'employee');document.getElementById('impBox').hidden=true;paintTeam();openModal(teamModal);});
-function fillRoleSelect(sel,v){sel.innerHTML=['employee','director','accountant','manager'].map(function(r){return'<option value="'+r+'"'+(r===v?' selected':'')+'>'+ROLES[r].n+'</option>';}).join('');}
-function roleOpts(v){return['employee','director','accountant','manager'].map(function(r){return'<option value="'+r+'"'+(r===v?' selected':'')+'>'+ROLES[r].n+'</option>';}).join('');}
+function fillRoleSelect(sel,v){sel.innerHTML=['employee','salesdir','mktdir','director','accountant','manager'].map(function(r){return'<option value="'+r+'"'+(r===v?' selected':'')+'>'+ROLES[r].n+'</option>';}).join('');}
+function roleOpts(v){return['employee','salesdir','mktdir','director','accountant','manager'].map(function(r){return'<option value="'+r+'"'+(r===v?' selected':'')+'>'+ROLES[r].n+'</option>';}).join('');}
 function slugUser(name){var w=String(name||'').toLowerCase().replace(/[^a-z0-9\s]/g,' ').trim().split(/\s+/).filter(Boolean);return(w.slice(0,2).join('.')||'user');}
 function takenUsers(){var t={};db.users.forEach(function(u){t[String(u.user).toLowerCase()]=1;});db.invites.forEach(function(i){t[i.id]=1;});return t;}
 function uniqueUser(base,taken){var u=base,n=2;while(taken[u]){u=base+n;n++;}taken[u]=1;return u;}
 function guessRole(title){var t=String(title||'').toLowerCase();
 if(/founder|ceo|owner|market(ing)? manager/.test(t))return'manager';
-if(/sales director|marketing director/.test(t))return'director';
+if(/sales director/.test(t))return'salesdir';if(/marketing director/.test(t))return'mktdir';
 if(/account/.test(t))return'accountant';return'employee';}
 function paintTeam(){var active={};db.users.forEach(function(u){active[String(u.user).toLowerCase()]=1;});
 var users=db.users.slice().sort(function(a,b){return(b.active-a.active)||String(a.name).localeCompare(String(b.name));});
@@ -1415,7 +1429,7 @@ var verb={added:'added',edited:'updated',deleted:'deleted','signed in':'signed i
 el.innerHTML=list.map(function(p){var l=p.last,where=l.d==='home'?'Home':TABS[l.d]||'';
 return'<div class="act-item"><span class="avatar" aria-hidden="true">'+esc((p.u||'?').charAt(0).toUpperCase())+'</span><div class="act-main"><b>'+esc(p.u)+'</b><span>'+where+' · '+(verb[l.a]||l.a)+(l.l?' '+esc(l.l):'')+'</span></div>'+
 '<div class="act-side"><b>'+agoEl(p.t)+'</b><span>'+p.n+(p.n===1?' update today':' updates today')+'</span></div></div>';}).join('');}
-function counts(){var ns=db.sales.length,nm=db.marketing.length;document.getElementById('c-sales').textContent=ns+(ns===1?' deal':' deals');document.getElementById('c-marketing').textContent=nm+(nm===1?' lead':' leads');var wq=db.expenses.filter(function(x){return x.status==='submitted';}).length;document.getElementById('c-finance').textContent=seesAllRequests()?(wq?wq+' waiting approval':'No pending expenses'):(db.expenses.filter(function(x){return expInMonth(x,curMonthKey());}).length+' expenses this month');
+function counts(){var ns=db.sales.length,nm=db.marketing.length;document.getElementById('c-sales').textContent=ns+(ns===1?' deal':' deals');paintSalesBadge();document.getElementById('c-marketing').textContent=nm+(nm===1?' lead':' leads');var wq=db.expenses.filter(function(x){return x.status==='submitted';}).length;document.getElementById('c-finance').textContent=seesAllRequests()?(wq?wq+' waiting approval':'No pending expenses'):(db.expenses.filter(function(x){return expInMonth(x,curMonthKey());}).length+' expenses this month');
 var n=locsFor(CUR_Y,CUR_M).length;document.getElementById('c-admin').textContent=n+(n===1?' location':' locations')+' · '+MON[CUR_M-1];}
 function paintHome(){counts();paintAvail();paintStar();paintActivity();paintWho();paintPermBadge();}
 
@@ -1428,7 +1442,7 @@ tabs.addEventListener('click',function(e){var b=e.target.closest('button');if(b)
 document.getElementById('back').addEventListener('click',function(){go('home');});
 function needName(fn){if(account)return fn();showLogin();}
 function paintLastup(){var el=document.getElementById('lastup'),L=db.log,hit=null;
-if(isApprover()){for(var i=L.length-1;i>=0;i--){if(L[i].d===cur){hit=L[i];break;}}}
+if(isMgr()){for(var i=L.length-1;i>=0;i--){if(L[i].d===cur){hit=L[i];break;}}}
 else{var src=cur==='admin'?db.locs:cur==='perm'?db.requests.map(function(r){return{updatedAt:r.decidedAt||r.createdAt,updatedBy:r.decidedBy||r.name};}):cur==='finance'?db.expenses.map(function(x){return{updatedAt:x.paidAt||x.decidedAt||x.createdAt,updatedBy:x.paidBy||x.decidedBy||x.name};}):(db[cur]||[]);
 src.forEach(function(r){if(r.updatedAt&&(!hit||r.updatedAt>hit.t))hit={t:r.updatedAt,u:r.updatedBy||'Unknown'};});}
 if(!hit){el.className='lastup none';el.innerHTML='No updates recorded yet';return;}
@@ -1445,14 +1459,14 @@ var SLABEL={done:'Done',late:'Overdue',soon:'Due soon',prog:'In progress'};
 function locById(id){for(var i=0;i<db.locs.length;i++)if(db.locs[i].id===id)return db.locs[i];return null;}
 function pickText(l){return l.name+' · '+(l.type||'—')+' · '+MON[l.m-1]+(l.y!==CUR_Y?' '+l.y:'');}
 function setupTable(){var c=cols();q.placeholder=cur==='sales'?'Search company, salesperson, location, feedback…':'Search lead, campaign, agent, location…';
-filter.innerHTML=cur==='sales'?'<option value="all">All stages</option><option value="open">Open deals</option><option value="due">Follow-up due</option>'+STAGES.map(function(s){return'<option value="'+s[0]+'">'+s[1]+'</option>';}).join(''):'<option value="all">All statuses</option>'+MSTAT.map(function(s){return'<option value="'+s[0]+'">'+s[1]+'</option>';}).join('');
+filter.innerHTML=cur==='sales'?'<option value="all">All stages</option><option value="open">Open deals</option><option value="due">Follow-up due</option>'+(canAssign('sales')?'<option value="unas">Unassigned</option><option value="mine">My deals</option>':'')+STAGES.map(function(s){return'<option value="'+s[0]+'">'+s[1]+'</option>';}).join(''):'<option value="all">All statuses</option>'+(canAssign('marketing')?'<option value="unas">Unassigned</option><option value="mine">My leads</option>':'')+MSTAT.map(function(s){return'<option value="'+s[0]+'">'+s[1]+'</option>';}).join('');
 filter.value='all';filter.setAttribute('aria-label',cur==='sales'?'Filter by stage':'Filter by status');var ab=document.getElementById('add');ab.lastChild.textContent=cur==='sales'?'New deal':'New lead';
 msort.innerHTML='<option value="">Sort by…</option>'+c.filter(function(x){return x.k!=='picks';}).map(function(x){return'<option value="'+x.k+'">'+x.l+'</option>';}).join('');
 thead.innerHTML='<th class="rn">#</th>'+c.map(function(x){return x.k==='picks'?'<th><span class="th">'+x.l+'</span></th>':'<th><button data-sort="'+x.k+'">'+x.l+'</button></th>';}).join('')+'<th class="act-h"><span class="th">&nbsp;</span></th>';}
 function visible(){var s=q.value.trim().toLowerCase(),f=filter.value;
 var list=(db[cur]||[]).filter(function(r){
 if(s){var hay=[r.name,r.loc,r.source,r.person,r.stage?stageOf(r.stage)[1]:'',r.response,r.campaign,r.phone,r.contact,r.industry,r.notes,r.updatedBy,r.mstatus?mstatName(r.mstatus):''].concat((r.picks||[]).map(function(id){var l=locById(id);return l?pickText(l):'';})).join(' ').toLowerCase();if(hay.indexOf(s)<0)return false;}
-if(f&&f!=='all'){if(cur==='sales'){if(f==='open'){if(!isOpen(r))return false;}else if(f==='due'){if(!followDue(r))return false;}else if((r.stage||'new')!==f)return false;}
+if(f==='unas'){if(r.owner!=='')return false;}else if(f==='mine'){if(r.owner!==account.id)return false;}else if(f&&f!=='all'){if(cur==='sales'){if(f==='open'){if(!isOpen(r))return false;}else if(f==='due'){if(!followDue(r))return false;}else if((r.stage||'new')!==f)return false;}
 else if((r.mstatus||'new')!==f)return false;}
 return true;});
 if(sortKey)list=list.slice().sort(function(a,b){var x=a[sortKey],y=b[sortKey];
@@ -1463,6 +1477,7 @@ return list;}
 function pillFor(r){var st=status(r);if(st==='done')return'<span class="pill p-done">Done</span>';if(st==='late')return'<span class="pill p-late">Overdue</span>';if(st==='soon')return'<span class="pill p-soon">Due soon</span>';return'';}
 function picksHtml(r){var ids=(r.picks||[]).filter(locById);return ids.map(function(id,i){var l=locById(id);return'<span class="lchip">'+esc(l.name)+' <small>'+esc(l.type||'')+' · '+MON[l.m-1]+'</small><button type="button" class="rmpick" data-id="'+id+'" aria-label="Remove '+esc(l.name)+'">×</button></span>';}).join('')+'<button type="button" class="addpick">+ Location</button>';}
 function cellFor(c,r){var v=r[c.k]==null?'':r[c.k],lab=' data-label="'+(c.ml||c.l)+'"';
+if(c.k==='person'&&(cur==='sales'||cur==='marketing'))return ownerCell(c,r,lab);
 if(c.k==='picks')return'<td'+lab+'><div class="picks">'+picksHtml(r)+'</div></td>';
 if(c.t==='upd')return'<td'+lab+'><div class="upd" data-upd>'+updCell(r)+'</div></td>';
 if(c.t==='sel'||c.t==='stage'||c.t==='mstat'){var o=c.t==='stage'?STAGES.map(function(x){return[x[0],x[1]];}):c.t==='mstat'?MSTAT:c.opts;
@@ -1506,7 +1521,7 @@ var b=e.target.closest('.del');if(!b)return;var r=rowOf(b);if(!r)return;
 if(!window.confirm('Delete '+label(r)+'?'))return;
 db[cur]=db[cur].filter(function(x){return x!==r;});logIt(cur,'deleted',label(r),r.id);save();render();paintLastup();toast('Row deleted');});
 tbody.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target.tagName==='INPUT'){e.preventDefault();var trs=[].slice.call(tbody.querySelectorAll('tr.rec')),tr=e.target.closest('tr'),i=trs.indexOf(tr),idx=[].indexOf.call(tr.querySelectorAll('input'),e.target);if(trs[i+1]){var t=trs[i+1].querySelectorAll('input')[idx];if(t)t.focus();}}});
-document.getElementById('add').addEventListener('click',function(){needName(function(){q.value='';filter.value='all';var r={id:uid()};if(cur==='sales'){r.stage='new';r.prob=10;r.person=me;}else if(cur==='marketing'){r.mstatus='new';r.person=me;}touch(r,cur,'added',cur==='sales'?'a new deal':'a new lead');db[cur].push(r);save();render();paintLastup();var tr=tbody.querySelector('tr[data-id="'+r.id+'"]');if(tr){tr.scrollIntoView({block:'nearest'});tr.querySelector('input').focus();}});});
+document.getElementById('add').addEventListener('click',function(){needName(function(){q.value='';filter.value='all';var r={id:uid()};if(cur==='sales'){r.stage='new';r.prob=10;r.person=me;}else if(cur==='marketing'){r.mstatus='new';r.person=me;}r.owner=account.id;touch(r,cur,'added',cur==='sales'?'a new deal':'a new lead');db[cur].push(r);save();render();paintLastup();var tr=tbody.querySelector('tr[data-id="'+r.id+'"]');if(tr){tr.scrollIntoView({block:'nearest'});tr.querySelector('input').focus();}});});
 q.addEventListener('input',render);filter.addEventListener('change',render);
 thead.addEventListener('click',function(e){var b=e.target.closest('[data-sort]');if(!b)return;var k=b.getAttribute('data-sort');if(sortKey===k)sortDir=-sortDir;else{sortKey=k;sortDir=k==='updatedAt'?-1:1;}
 thead.querySelectorAll('[data-sort]').forEach(function(x){x.textContent=x.textContent.replace(/ [▲▼]$/,'');});b.textContent+=sortDir>0?' ▲':' ▼';render();});
@@ -1517,7 +1532,7 @@ var pickModal=document.getElementById('pickModal'),pickRow=null,pY=CUR_Y,pM=CUR_
 function openPicker(r){if(!r)return;pickRow=r;document.getElementById('pickClient').textContent=r.name||'this client';pY=CUR_Y;pM=CUR_M;
 var p=(r.picks||[]).map(locById).filter(Boolean);if(p.length){pY=p[p.length-1].y;pM=p[p.length-1].m;}
 paintPicker();openModal(pickModal);}
-function pickedBy(id){return db.sales.filter(function(c){return(c.picks||[]).indexOf(id)>=0;});}
+function pickedBy(id){var v=db.sales.filter(function(c){return(c.picks||[]).indexOf(id)>=0;}),l=locById(id),m=(l&&l.picked)||{};Object.keys(m).forEach(function(did){if(!db.sales.some(function(x){return x.id===did;}))v.push({id:did,name:'Another client',ghost:true});});return v;}
 function paintPicker(){pickMonth.innerHTML=monthOpts(pM);document.getElementById('pyLab').textContent=pY;
 var list=locsFor(pY,pM),el=document.getElementById('pickList');
 if(!list.length){el.innerHTML='<div class="pempty">No locations added for <b>'+MONTHS[pM-1]+' '+pY+'</b> yet.<br>Administration adds the available locations each month.<br><button type="button" class="tb" id="goAdmin">Open Administration</button></div>';return;}
@@ -1787,7 +1802,7 @@ function paintSubtabs(){var l=subList();if(!l.length){subtabsEl.hidden=true;retu
 if(!l.some(function(s){return s[0]===sub[cur];}))sub[cur]=l[0][0];
 subtabsEl.hidden=l.length<2;subtabsEl.innerHTML=l.map(function(s){return'<button type="button" role="tab" aria-selected="'+(s[0]===sub[cur])+'" class="'+(s[0]===sub[cur]?'on':'')+'" data-sub="'+s[0]+'">'+s[1]+'</button>';}).join('');}
 subtabsEl.addEventListener('click',function(e){var b=e.target.closest('[data-sub]');if(!b)return;sub[cur]=b.getAttribute('data-sub');enterSub();window.scrollTo(0,0);});
-function enterDept(){fillLists();paintSubtabs();enterSub();}
+function enterDept(){fillLists();paintSubtabs();enterSub();setTimeout(markSeen,600);}
 function enterSub(){paintSubtabs();var x=!!SUBS[cur]&&sub[cur]!=='table';dept.classList.toggle('x-on',x);
 if(x)renderX();else{setupTable();render();}paintLastup();}
 function renderDept(){if(dept.classList.contains('x-on'))renderX();else render();}
@@ -1798,11 +1813,11 @@ else if(s==='fover')renderFinOverview();else if(s==='exp')renderExpenses();else 
 /* --- sales & marketing table helpers --- */
 function onStage(r,sel){var v=r.stage||'new';r.prob=stageOf(v)[2];if(sel)sel.className='csel stg stg-'+v;
 if(v==='won'&&!r.wonAt)r.wonAt=Date.now();if(v!=='won')delete r.wonAt;if(v==='lost'&&!r.lostAt)r.lostAt=Date.now();if(v!=='lost')delete r.lostAt;
-if(r.fromLead){var L=db.marketing.filter(function(x){return x.id===r.fromLead;})[0];if(L){var ns=v==='won'?'converted':v==='lost'?'notint':'sent';if(L.mstatus!==ns){L.mstatus=ns;touch(L,'marketing','edited',L.name||'a lead');}}}
+if(r.fromLead){var L=db.marketing.filter(function(x){return x.id===r.fromLead;})[0],ns=v==='won'?'converted':v==='lost'?'notint':'sent';if(L){if(L.mstatus!==ns){L.mstatus=ns;touch(L,'marketing','edited',L.name||'a lead');}}else if(r.leadSt!==ns){r.leadSt=ns;FB.updateDoc(FB.doc(fsdb,'records/'+r.fromLead),{mstatus:ns,updatedAt:Date.now(),updatedBy:who()}).catch(function(){});}}
 if(v==='lost'&&!r.lostReason)toast('Add the reason it was lost in Details');}
-function sendToSales(L){var r={id:uid(),name:L.name||'',loc:L.loc||'',source:L.source||'Marketing team',campaign:L.campaign||'',stage:'new',prob:10,phone:L.phone||'',fromLead:L.id,
+function sendToSales(L){var r={id:uid(),owner:'',person:'',name:L.name||'',loc:L.loc||'',source:L.source||'Marketing team',campaign:L.campaign||'',stage:'new',prob:10,phone:L.phone||'',fromLead:L.id,
 notes:'From marketing'+(L.person?' ('+L.person+')':'')+(L.notes?': '+L.notes:'')};touch(r,'sales','added',r.name||'a new deal');db.sales.push(r);
-L.mstatus='sent';L.salesId=r.id;touch(L,'marketing','edited',L.name||'a lead');save();render();toast((L.name||'Lead')+' sent to the sales pipeline');}
+L.mstatus='sent';L.salesId=r.id;touch(L,'marketing','edited',L.name||'a lead');save();render();toast((L.name||'Lead')+' sent to the Sales Director to assign');}
 
 /* --- deal details --- */
 var dealModal=document.getElementById('dealModal'),dealRow=null;
@@ -2162,7 +2177,7 @@ var BF=[['Company size',[['size','Size','sel'],['staff','Employees (approx.)'],[
 ['Call plan',[['opener','Opening line','ta'],['questions','Questions to ask (one per line)','ta'],['objections','Expected objections and your answer (one per line)','ta']]],
 ['People & budget',[['decision','Decision maker'],['budget','Expected budget']]]];
 var SIZES=[['small','Small'],['medium','Medium'],['large','Large']];
-var BKEYS={SIZE:'size',STAFF:'staff',EMPLOYEES:'staff',BRANCHES:'branches',PROJECTS:'branches',FOUNDED:'since',AREAS:'areas',STRENGTHS:'strengths',AUDIENCE:'audience',NEWS:'news',COMPETITORS:'rivals',SEASON:'season',TIMING:'season',OPENER:'opener',QUESTIONS:'questions',OBJECTIONS:'objections'};
+var BKEYS={SIZE:'size','COMPANY SIZE':'size','NUMBER OF EMPLOYEES':'staff','RECENT NEWS':'news','BEST TIMING':'season','OPENING LINE':'opener',CUSTOMERS:'audience','الحجم':'size','حجم الشركة':'size','عدد الموظفين':'staff','الموظفين':'staff','الفروع':'branches','المشروعات':'branches','المشاريع':'branches','سنة التأسيس':'since','التأسيس':'since','المناطق':'areas','نقاط القوة':'strengths','نقاط التميز':'strengths','التميز':'strengths','الجمهور':'audience','العملاء':'audience','الأخبار':'news','المنافسين':'rivals','المنافسون':'rivals','الموسم':'season','التوقيت':'season','جملة البداية':'opener','الافتتاحية':'opener','الأسئلة':'questions','الاعتراضات':'objections',STAFF:'staff',EMPLOYEES:'staff',BRANCHES:'branches',PROJECTS:'branches',FOUNDED:'since',AREAS:'areas',STRENGTHS:'strengths',AUDIENCE:'audience',NEWS:'news',COMPETITORS:'rivals',SEASON:'season',TIMING:'season',OPENER:'opener',QUESTIONS:'questions',OBJECTIONS:'objections'};
 function briefOf(){var r=dealById(briefDeal);if(r){if(!r.brief||typeof r.brief!=='object')r.brief={};return r.brief;}return briefDraft;}
 function briefDay(){var d=new Date();return d.getDate()+' '+MONTHS[d.getMonth()]+' '+d.getFullYear();}
 function normName(s){return String(s||'').toLowerCase().replace(/[^a-z0-9؀-ۿ]+/g,' ').trim();}
@@ -2202,25 +2217,30 @@ document.getElementById('bfFetch').addEventListener('click',function(){var w=doc
 if(!w){msg.textContent='Type the company website first.';return;}btn.disabled=true;msg.textContent='Reading the website…';
 helper('profile',{url:w}).then(function(j){var t=[j.description||'',j.text||''].join('\n').trim(),bb=briefOf(),got=0;
 if(!t){msg.textContent='The website has little text to use. Try “Copy AI prompt”.';return;}
-var m=t.match(/(\d[\d,\.]*\+?)\s*(employees|staff|team members|موظف)/i);if(m&&!bb.staff){bb.staff=m[1];got++;}
-m=t.match(/(founded|established|since|est\.|منذ|تأسست|تأسيس)[^\d]{0,20}((19|20)\d{2})/i);if(m&&!bb.since){bb.since=m[2];got++;}
-m=t.match(/(\d[\d,]*\+?)\s*(branches|projects|stores|outlets|locations|communities|فرع|فروع|مشروع|مشروعات|مشاريع)/i);if(m&&!bb.branches){bb.branches=m[1]+' '+m[2];got++;}
-if(!bb.strengths){bb.strengths=t.slice(0,600);got++;}
+got=briefGuess(t,bb);
 if(got){bb.src='Company website · '+briefDay();}keepBrief();renderBrief();document.getElementById('bfMsg').textContent=got?'Filled what the website says. Shorten the strengths and add the rest, or use “Copy AI prompt”.':'Nothing new found on the website.';})
 .catch(function(err){msg.textContent=helperMsg(err);}).then(function(){btn.disabled=false;});});
 document.getElementById('bfPrompt').addEventListener('click',function(){var rr=dealById(briefDeal),n=(rr?rr.name:(document.getElementById('bfName')||{}).value)||'[company name]',w=document.getElementById('bfWeb').value.trim();
 var p='I sell outdoor advertising (billboards) in Egypt for Media Market. I am about to call or visit the company "'+n.trim()+'"'+(rr&&rr.industry?' ('+rr.industry+')':'')+(rr&&rr.loc?', located in '+rr.loc:'')+(w?', website '+w:'')+'.\n'+
-'Give me a short sales brief. Answer with exactly these labels, one per line, in English labels. Write "unknown" when you are not sure. Do not invent numbers; mark estimates with "about".\n'+
+'Give me a short sales brief. Reply ONLY with the 13 lines below, in this order, each line starting with its label and a colon, with no intro and no extra text. Keep the labels in English. Write "unknown" when you are not sure. Do not invent numbers; mark estimates with "about".\n'+
 'SIZE: Small, Medium or Large\nSTAFF: number of employees\nBRANCHES: number of branches or projects\nFOUNDED: year\nAREAS: cities or areas where they operate\nSTRENGTHS: what makes them different, main products or projects\nAUDIENCE: who their customers are\nNEWS: recent launches, new branches or projects (with month and year)\nCOMPETITORS: main competitors, and which of them advertise on billboards\nSEASON: their best selling seasons\nOPENER: one opening line for my call\nQUESTIONS: 3 questions to ask them, separated by " | "\nOBJECTIONS: 3 likely objections with a short answer each, as "objection → answer", separated by " | "';
 copyText(p).then(function(){document.getElementById('bfMsg').textContent='Prompt copied. Paste it in ChatGPT or Gemini, then paste the answer below and press “Fill the brief”.';document.getElementById('bfPasteBox').open=true;});});
 document.getElementById('bfFill').addEventListener('click',function(){var t=document.getElementById('bfPaste').value,bb=briefOf(),last=null,n=0;
-t.split(/\r?\n/).forEach(function(line){var m=line.replace(/[*_#`]/g,'').match(/^\s*[-•]?\s*([A-Za-z]+)\s*[:：]\s*(.*)$/);var k=m&&BKEYS[m[1].toUpperCase()];
+t.split(/\r?\n/).forEach(function(line){var m=line.replace(/[*_#`]/g,'').match(/^\s*(?:[-•]|\d+[\.\)])?\s*([A-Za-z\u0600-\u06ff][A-Za-z\u0600-\u06ff \/]{1,24}?)\s*[:：]\s*(.*)$/);var k=m&&BKEYS[m[1].trim().toUpperCase()];
 if(k){last=k;var v=m[2].trim();if(/^unknown\.?$/i.test(v)||/^غير معروف/.test(v))v='';if(k==='size'){var s=v.toLowerCase();v=/large|كبير/.test(s)?'large':/medium|متوسط/.test(s)?'medium':/small|صغير/.test(s)?'small':'';}
 if(k==='questions'||k==='objections')v=v.split(/\s*\|\s*/).filter(Boolean).join('\n');if(v){bb[k]=v;n++;}}
 else if(last&&line.trim()&&last!=='size'){var c=line.trim().replace(/^[-•\d\.\)\s]+/,'');if(c)bb[last]=(bb[last]?bb[last]+'\n':'')+c;}});
-if(!n){document.getElementById('bfMsg').textContent='Couldn’t read the answer. Make sure it has the labels (SIZE:, STAFF:, …).';return;}
+if(!n){if(!t.trim()){document.getElementById('bfMsg').textContent='Paste the AI answer first.';return;}var g=briefGuess(t,bb);bb.src='AI answer, check before quoting · '+briefDay();keepBrief();renderBrief();
+document.getElementById('bfMsg').textContent='The answer had no labels, so I filled what I could find and put the text in Strengths. For a full brief, press “Copy AI prompt” and paste that prompt in the AI as it is.';return;}
 bb.src='AI answer, check before quoting · '+briefDay();keepBrief();renderBrief();document.getElementById('bfMsg').textContent='Brief filled ('+n+' items). Check it, then open the brief sheet.';});
 document.getElementById('bfOpen').addEventListener('click',buildBrief);}
+function briefGuess(t,bb){var got=0,m;
+m=t.match(/(\d[\d,\.]*\+?)\s*(employees|staff|team members|people|موظف|موظفين)/i);if(m&&!bb.staff){bb.staff=m[1];got++;}
+m=t.match(/(founded|established|since|est\.|began operations|started operations|operating|launched|منذ|تأسست|تأسيس|بدأت)[^\d]{0,40}((19|20)\d{2})/i);if(m&&!bb.since){bb.since=m[2];got++;}
+m=t.match(/(\d[\d,]*\+?)\s*(branches|projects|stores|outlets|showrooms|locations|communities|فرع|فروع|مشروع|مشروعات|مشاريع)/i);if(m&&!bb.branches){bb.branches=m[1]+' '+m[2];got++;}
+if(!bb.size&&bb.staff){var n=parseInt(String(bb.staff).replace(/[^\d]/g,''),10);if(n)bb.size=n>=1000?'large':n>=100?'medium':'small';}
+if(!bb.strengths){bb.strengths=t.replace(/\n{3,}/g,'\n\n').slice(0,700).trim();got++;}
+return got;}
 function keepBrief(){var r=dealById(briefDeal);if(!r)return;touch(r,'sales','edited',label(r));save();}
 function fmtDate(t){var d=new Date(t);return d.getDate()+' '+MONTHS[d.getMonth()];}
 function buildBrief(){var r=dealById(briefDeal)||{},b=briefOf(),name=r.name||b._name||'[Client]',d=new Date(),foot=esc(name)+' · Internal brief · '+briefDay();
@@ -2242,6 +2262,42 @@ h.push(slide('s-dark s-brief','<div class="s-kicker">Call plan</div><h2 class="s
 '<div class="s-card s-card-d"><b>If they say…</b>'+(o.length?'<ul class="s-ol s-ol-sm">'+o.map(function(x){return'<li>'+E(esc(x))+'</li>';}).join('')+'</ul>':'<span class="s-mute">—</span>')+'</div></div>'+
 '<p class="s-src">Decision maker: '+sv(b.decision)+' · Budget: '+sv(b.budget)+(hist.length?' · Earlier deals with us: '+hist.length+' ('+hist.map(function(x){return stageOf(x.stage||'new')[1];}).join(', ')+')':'')+'</p>',foot));
 deckLang=dl;openDeck('Client brief — '+name,h.join(''),'MediaMarket-brief-'+name.replace(/[^\w؀-ۿ]+/g,'-'));}
+
+/* ---------- ownership: each person sees their own records; directors see their department; the Admin sees all ---------- */
+function myRole(){return account?account.role:'';}
+function canAssign(d){return isMgr()||(d==='sales'&&myRole()==='salesdir')||(d==='marketing'&&myRole()==='mktdir');}
+function teamList(){var src=isMgr()&&db.users.length?db.users.map(function(u){return{uid:u.id,name:u.name,role:u.role,active:u.active};}):(db.team||[]);
+return src.filter(function(u){return u.active!==false&&u.name;}).sort(function(a,b){return String(a.name).localeCompare(String(b.name));});}
+function teamName(uid){var t=teamList().filter(function(u){return u.uid===uid;})[0];return t?t.name:'';}
+function ownerCell(c,r,lab){var d=cur;if(!canAssign(d)){var nm=r.person||(r.owner===''?'Unassigned':'');return'<td'+lab+'><span class="owner-ro'+(r.owner===''?' unas-t':'')+'">'+esc(nm||'—')+'</span></td>';}
+var o=r.owner===undefined?'':r.owner,list=teamList(),has=list.some(function(u){return u.uid===o;});
+return'<td'+lab+(o===''?' class="unas"':'')+'><select class="csel own" data-own="1" aria-label="'+c.l+'"><option value=""'+(o===''?' selected':'')+'>— Unassigned —</option>'+(o&&!has?'<option value="'+esc(o)+'" selected>'+esc(r.person||'Former member')+'</option>':'')+list.map(function(u){return'<option value="'+esc(u.uid)+'"'+(u.uid===o?' selected':'')+'>'+esc(u.name)+'</option>';}).join('')+'</select></td>';}
+tbody.addEventListener('change',function(e){var s=e.target.closest('select[data-own]');if(!s)return;var r=rowOf(s);if(!r)return;
+r.owner=s.value;r.person=s.value?teamName(s.value):'';if(s.value){r.assignedAt=Date.now();r.assignedBy=who();r.seen=s.value===account.id;}else{delete r.assignedAt;delete r.seen;}
+var td=s.closest('td');if(td)td.classList.toggle('unas',!s.value);touch(r,cur,'edited',label(r));save();refreshUpd(r);tableStats();counts();
+toast(s.value?(label(r)+' → '+r.person):(label(r)+' is unassigned'));});
+/* board picks shared through the location (deal ids only), so everyone sees what is taken without seeing other people's clients */
+function syncPicks(){if(!db||!db.locs)return;var present={};['marketing','sales','finance'].forEach(function(d){db[d].forEach(function(r){present[r.id]=1;});});
+var gone=Object.keys(shadow).filter(function(p){return p.indexOf('records/')===0&&!present[p.slice(8)];}).map(function(p){return p.slice(8);});
+db.locs.forEach(function(l){var m=l.picked&&typeof l.picked==='object'?l.picked:null,ch=false,nm=m?Object.assign({},m):{};
+gone.forEach(function(id){if(nm[id]){delete nm[id];ch=true;}});
+db.sales.forEach(function(r){var has=(r.picks||[]).indexOf(l.id)>=0;if(has&&!nm[r.id]){nm[r.id]=1;ch=true;}else if(!has&&nm[r.id]){delete nm[r.id];ch=true;}});
+if(ch){if(Object.keys(nm).length)l.picked=nm;else delete l.picked;}});}
+/* one-time: give old records an owner from the salesperson / agent name */
+function migrateOwners(){if(!isMgr()||!db.users.length)return;var byName={};db.users.forEach(function(u){if(u.name)byName[String(u.name).trim().toLowerCase()]=u.id;});
+var n=0;['marketing','sales','finance'].forEach(function(d){db[d].forEach(function(r){if(r.owner!==undefined)return;
+var k=String(r.person||'').trim().toLowerCase(),c=String(r.createdBy||'').trim().toLowerCase();
+r.owner=byName[k]||(d!=='sales'?byName[c]||'':'')||'';if(r.owner&&!r.person&&d!=='finance')r.person=teamName(r.owner);n++;});});
+if(n){save();console.log('owners set on',n,'records');}}
+/* the Admin publishes a small team directory (names only) so directors can assign */
+function publishTeam(){if(!isMgr()||!fsdb)return;var list=db.users.map(function(u){return{uid:u.id,name:u.name||'',role:u.role||'employee',active:u.active!==false};});
+var j=stable({list:list});if(shadow['meta/team']===j)return;shadow['meta/team']=j;FB.setDoc(FB.doc(fsdb,'meta/team'),{list:list}).catch(function(e){console.warn(e);});}
+function newForMe(){return db.sales.filter(function(r){return r.owner===account.id&&r.seen===false;});}
+function unassigned(){return db.sales.filter(function(r){return r.owner==='';});}
+function paintSalesBadge(){var b=document.getElementById('salesBadge');if(!b||!account)return;var n=canAssign('sales')?unassigned().length:newForMe().length;b.hidden=!n;b.textContent=n;
+b.title=canAssign('sales')?'Deals waiting to be assigned':'New deals assigned to you';}
+function markSeen(){if(cur!=='sales'||!account)return;var l=newForMe();if(!l.length)return;l.forEach(function(r){r.seen=true;});save();
+toast(l.length===1?'New deal assigned to you: '+label(l[0]):l.length+' new deals assigned to you');}
 
 /* ---------- offline: keep changes on this device until the internet is back ---------- */
 function softWrite(p){return new Promise(function(res,rej){var done=false;
