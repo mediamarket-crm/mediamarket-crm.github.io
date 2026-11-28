@@ -840,7 +840,7 @@ td.unas .csel.own{color:var(--ink);font-weight:700}
 <form class="team-add" id="teamAdd" novalidate>
 <b>Add a team member</b>
 <div class="two"><label class="field">Full name<input id="tName" type="text" placeholder="e.g. Sara Ali"></label>
-<label class="field">Job title<input id="tTitle" type="text" placeholder="e.g. Business developer"></label></div>
+<label class="field">Job title<input id="tTitle" type="text" list="dl-titles" placeholder="e.g. Sales Agent" autocomplete="off"><datalist id="dl-titles"><option value="Sales Agent"><option value="Marketing Agent"><option value="Business development executive"><option value="Sales Director"><option value="Marketing Director"><option value="Commercial Director"><option value="Financial Accountant"><option value="Out door production"><option value="Founder"><option value="System Developer"></datalist></label></div>
 <div class="two"><label class="field">Username<input id="tUser" type="text" placeholder="e.g. sara.ali" autocapitalize="none" spellcheck="false"></label>
 <label class="field">Role<select id="tRole"></select></label></div>
 <p class="lerr" id="tErr" role="alert" hidden></p>
@@ -1282,8 +1282,8 @@ function slugUser(name){var w=String(name||'').toLowerCase().replace(/[^a-z0-9\s
 function takenUsers(){var t={};db.users.forEach(function(u){t[String(u.user).toLowerCase()]=1;});db.invites.forEach(function(i){t[i.id]=1;});return t;}
 function uniqueUser(base,taken){var u=base,n=2;while(taken[u]){u=base+n;n++;}taken[u]=1;return u;}
 function guessRole(title){var t=String(title||'').toLowerCase();
-if(/founder|ceo|owner|market(ing)? manager/.test(t))return'manager';
-if(/sales director/.test(t))return'salesdir';if(/marketing director/.test(t))return'mktdir';
+if(/founder|ceo|owner|system developer/.test(t))return'manager';
+if(/sales director|commercial director|head of sales|sales manager/.test(t))return'salesdir';if(/marketing director|head of marketing|market(ing)? manager/.test(t))return'mktdir';
 if(/account/.test(t))return'accountant';return'employee';}
 function paintTeam(){var active={};db.users.forEach(function(u){active[String(u.user).toLowerCase()]=1;});
 var users=db.users.slice().sort(function(a,b){return(b.active-a.active)||String(a.name).localeCompare(String(b.name));});
@@ -1299,8 +1299,8 @@ if(e.target.classList.contains('urole')){var id=row.getAttribute('data-uid');FB.
 if(e.target.classList.contains('irole')){var iid=row.getAttribute('data-inv');FB.updateDoc(FB.doc(fsdb,'invites/'+iid),{role:v}).then(function(){toast('Role updated');}).catch(function(err){toast(authMsg(err));});}});
 document.getElementById('teamList').addEventListener('click',function(e){if(!isMgr())return;var row=e.target.closest('.trow');if(!row)return;
 if(e.target.closest('.et')){var uidv=row.getAttribute('data-uid'),inv=row.getAttribute('data-inv'),obj=uidv?db.users.filter(function(x){return x.id===uidv;})[0]:db.invites.filter(function(x){return x.id===inv;})[0];if(!obj)return;
-var nt=window.prompt('Job title for '+obj.name+':',obj.title||'');if(nt===null)return;nt=nt.replace(/\s+/g,' ').trim();if(nt===(obj.title||''))return;
-FB.updateDoc(FB.doc(fsdb,(uidv?'users/'+uidv:'invites/'+inv)),{title:nt}).then(function(){obj.title=nt;if(uidv&&account&&uidv===account.id){account.title=nt;paintWho();}paintTeam();toast(obj.name+'’s title updated');}).catch(function(err){toast(authMsg(err));});return;}
+var nt=window.prompt('Job title for '+obj.name+' (e.g. Sales Agent, Marketing Agent, Sales Director, Marketing Director, Financial Accountant):',obj.title||'');if(nt===null)return;nt=nt.replace(/\s+/g,' ').trim();if(nt===(obj.title||''))return; var self0=uidv&&account&&uidv===account.id,gr=guessRole(nt),up={title:nt};if(!self0&&gr!==(obj.role||'employee'))up.role=gr;
+FB.updateDoc(FB.doc(fsdb,(uidv?'users/'+uidv:'invites/'+inv)),up).then(function(){obj.title=nt;if(up.role){obj.role=up.role;toast(obj.name+' is now '+ROLES[up.role].n);}if(uidv&&account&&uidv===account.id){account.title=nt;paintWho();}paintTeam();toast(obj.name+'’s title updated');}).catch(function(err){toast(authMsg(err));});return;}
 if(e.target.closest('.rmi')){var iid=row.getAttribute('data-inv');if(!window.confirm('Cancel the invitation for @'+iid+'?'))return;FB.deleteDoc(FB.doc(fsdb,'invites/'+iid)).then(function(){db.invites=db.invites.filter(function(x){return x.id!==iid;});paintTeam();}).catch(function(err){toast(authMsg(err));});return;}
 var u=db.users.filter(function(x){return x.id===row.getAttribute('data-uid');})[0];if(!u)return;
 var rm=e.target.closest('.rm'),rs=e.target.closest('.rs');if(!rm&&!rs)return;
