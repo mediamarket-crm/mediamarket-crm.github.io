@@ -1144,13 +1144,17 @@ list.sort(function(a,b){return a.t-b.t;});db.log=list;got('log',snap);},err));
 unsubs.push(FB.onSnapshot(FB.doc(fsdb,'meta/star'),function(d){db.star=d.exists()?d.data():{};if(d.exists())shadow['meta/star']=stable(d.data());got('star',d);},err));
 unsubs.push(FB.onSnapshot(FB.doc(fsdb,'meta/types'),function(d){var l=d.exists()&&Array.isArray(d.data().list)?d.data().list:[];
 db.types=l;if(d.exists())shadow['meta/types']=stable(d.data());got('types',d);},err));
-if(isMgr())unsubs.push(FB.onSnapshot(FB.collection(fsdb,'users'),function(snap){var u=[];snap.forEach(function(d){var o=d.data();u.push({id:d.id,name:o.name,title:o.title||'',user:o.username,role:o.role||'employee',active:o.active!==false});});db.users=u;got('users',snap);publishTeam();},err));
+if(isMgr())unsubs.push(FB.onSnapshot(FB.collection(fsdb,'users'),function(snap){var u=[];snap.forEach(function(d){var o=d.data();u.push({id:d.id,name:o.name,title:o.title||'',user:o.username,role:o.role||'employee',dept:o.dept||'',active:o.active!==false});});db.users=u;got('users',snap);publishTeam();},err));
 if(!isMgr())unsubs.push(FB.onSnapshot(FB.doc(fsdb,'meta/team'),function(d){db.team=d.exists()&&Array.isArray(d.data().list)?d.data().list:[];},function(e){console.warn(e);}));
 if(isMgr())unsubs.push(FB.onSnapshot(FB.collection(fsdb,'invites'),function(snap){var u=[];snap.forEach(function(d){var o=d.data();o.id=d.id;u.push(o);});db.invites=u;got('invites',snap);},err));
 var rq=seesAllRequests()?FB.collection(fsdb,'requests'):FB.query(FB.collection(fsdb,'requests'),FB.where('uid','==',account.id));
-unsubs.push(FB.onSnapshot(rq,function(snap){var l=[];snap.forEach(function(d){var o=d.data();o.id=d.id;l.push(o);});l.sort(function(a,b){return(b.createdAt||0)-(a.createdAt||0);});db.requests=l;got('requests',snap);},err));
+var rqC={};function rqUnion(k,snap0){var m={};snap0.forEach(function(d){m[d.id]=d;});rqC[k]=m;var u={};Object.keys(rqC).forEach(function(x){Object.keys(rqC[x]).forEach(function(id){u[id]=rqC[x][id];});});var docs=Object.keys(u).map(function(id){return u[id];});return{forEach:function(f){docs.forEach(f);},metadata:snap0.metadata};}
+if(!seesAllRequests()&&dirDept()){rqC.team={};unsubs.push(FB.onSnapshot(FB.query(FB.collection(fsdb,'requests'),FB.where('dept','==',dirDept())),function(s2){var snap=rqUnion('team',s2);var l=[];snap.forEach(function(d){var o=d.data();o.id=d.id;l.push(o);});l.sort(function(a,b){return(b.createdAt||0)-(a.createdAt||0);});db.requests=l;if(dataReady){renderPermIfOpen();paintPermBadge();}},err));}
+unsubs.push(FB.onSnapshot(rq,function(snap){snap=rqUnion('own',snap);var l=[];snap.forEach(function(d){var o=d.data();o.id=d.id;l.push(o);});l.sort(function(a,b){return(b.createdAt||0)-(a.createdAt||0);});db.requests=l;got('requests',snap);},err));
 var eq=seesAllRequests()?FB.collection(fsdb,'expenses'):FB.query(FB.collection(fsdb,'expenses'),FB.where('uid','==',account.id));
-unsubs.push(FB.onSnapshot(eq,function(snap){var l=[];snap.forEach(function(d){var o=d.data();o.id=d.id;l.push(o);});l.sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''))||(b.createdAt||0)-(a.createdAt||0);});db.expenses=l;got('expenses',snap);},err));
+var exC={};function exUnion(k,snap0){var m={};snap0.forEach(function(d){m[d.id]=d;});exC[k]=m;var u={};Object.keys(exC).forEach(function(x){Object.keys(exC[x]).forEach(function(id){u[id]=exC[x][id];});});var docs=Object.keys(u).map(function(id){return u[id];});return{forEach:function(f){docs.forEach(f);},metadata:snap0.metadata};}
+if(!seesAllRequests()&&dirDept()){exC.team={};unsubs.push(FB.onSnapshot(FB.query(FB.collection(fsdb,'expenses'),FB.where('dept','==',dirDept())),function(s2){var snap=exUnion('team',s2);var l=[];snap.forEach(function(d){var o=d.data();o.id=d.id;l.push(o);});l.sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''))||(b.createdAt||0)-(a.createdAt||0);});db.expenses=l;if(dataReady){counts();if(cur==='finance')renderDept();}},err));}
+unsubs.push(FB.onSnapshot(eq,function(snap){snap=exUnion('own',snap);var l=[];snap.forEach(function(d){var o=d.data();o.id=d.id;l.push(o);});l.sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''))||(b.createdAt||0)-(a.createdAt||0);});db.expenses=l;got('expenses',snap);},err));
 if(seesAllRequests())unsubs.push(FB.onSnapshot(FB.collection(fsdb,'invoices'),function(snap){var l=[];snap.forEach(function(d){var o=d.data();o.id=d.id;l.push(o);});db.invoices=l;got('invoices',snap);},err));
 unsubs.push(FB.onSnapshot(FB.collection(fsdb,'plans'),function(snap){var m={};snap.forEach(function(d){m[d.id]=d.data();});db.plans=m;if(planEditing&&!planTimer&&m[planEditing.id])planEditing=null;got('plans',snap);},err));
 unsubs.push(FB.onSnapshot(FB.doc(fsdb,'meta/deck'),function(d){db.deck=d.exists()?d.data():{};got('deck',d);},err));}
@@ -1183,7 +1187,13 @@ var ROLES={manager:{n:'Admin',d:'Admin · full access, approvals and reports'},d
 function isMgr(){return!!account&&account.role==='manager';}
 function isApprover(){return!!account&&(account.role==='manager'||account.role==='director');}
 function canReport(){return!!account&&(account.role==='manager'||account.role==='accountant');}
-function seesAllRequests(){return!!account&&account.role!=='employee';}
+function seesAllRequests(){return!!account&&(account.role==='manager'||account.role==='director'||account.role==='accountant');}
+function dirDept(){return!account?'':account.role==='salesdir'?'sales':account.role==='mktdir'?'marketing':'';}
+function canDecide(r){return!!account&&!!r&&(isApprover()||(!!dirDept()&&r.dept===dirDept()&&r.uid!==account.id));}
+function decidesAny(){return isApprover()||!!dirDept();}
+var DEPTS_T=[['','No department'],['sales','Sales'],['marketing','Marketing'],['finance','Finance'],['operations','Operations']];
+function guessDept(t){t=String(t||'').toLowerCase();if(/marketing|market manager|social|content|media buy/.test(t))return'marketing';if(/sales|business develop|commercial|account manager/.test(t))return'sales';if(/account|financ/.test(t))return'finance';if(/production|operation|install|out ?door/.test(t))return'operations';return'';}
+function deptOpts(v){return DEPTS_T.map(function(d){return'<option value="'+d[0]+'"'+(d[0]===(v||'')?' selected':'')+'>'+d[1]+'</option>';}).join('');}
 function roleName(r){return(ROLES[r]||ROLES.employee).d;}
 function applyAccount(){me=account?account.name:'';var r=account?account.role:'';
 ['manager','director','accountant','employee','salesdir','mktdir'].forEach(function(x){document.body.classList.toggle('role-'+x,r===x);});paintWho();}
@@ -1240,7 +1250,7 @@ FB.getDoc(FB.doc(fsdb,'invites/'+un)).then(function(d){
 if(!d.exists()){throw{code:'no-invite'};}
 var inv=d.data();settingUp=true;justSignedIn=true;
 return FB.createUserWithEmailAndPassword(auth,toEmail(un),p).then(function(cred){
-return FB.setDoc(FB.doc(fsdb,'users/'+cred.user.uid),{name:inv.name,title:inv.title||'',username:un,role:inv.role||'employee',active:true,createdAt:Date.now()})
+return FB.setDoc(FB.doc(fsdb,'users/'+cred.user.uid),{dept:inv.dept||'',name:inv.name,title:inv.title||'',username:un,role:inv.role||'employee',active:true,createdAt:Date.now()})
 .then(function(){settingUp=false;['aPass','aPass2'].forEach(function(id){document.getElementById(id).value='';});onAuth(cred.user);});});})
 .catch(function(err){settingUp=false;justSignedIn=false;setLoginState('activate');
 er.textContent=err&&err.code==='no-invite'?'This username isn’t on the team list. Check it with the manager.':/email-already-in-use/.test(err&&err.code||'')?'This account is already active. Go back and sign in.':authMsg(err);er.hidden=false;});});
@@ -1251,7 +1261,7 @@ FB.getDoc(FB.doc(fsdb,'meta/setup')).then(function(d){setLoginState(d.exists()?'
 setLoginState('syncing');showLogin();
 FB.getDoc(FB.doc(fsdb,'users/'+user.uid)).then(function(d){var u=d.exists()?d.data():null;
 if(!u||u.active===false){var m=u?'This account no longer has access. Ask the Market Manager.':'This account is not set up. Ask the Market Manager.';FB.signOut(auth).then(function(){loginError(m);});return;}
-account={id:user.uid,name:u.name,user:u.username,role:u.role||'employee',title:u.title||''};applyAccount();listen();})
+account={id:user.uid,name:u.name,user:u.username,role:u.role||'employee',title:u.title||'',dept:u.dept||''};applyAccount();listen();})
 .catch(function(err){console.error(err);FB.signOut(auth).then(function(){loginError(authMsg(err));});});}
 function onDataReady(){migrateOwners();publishTeam();loginV.classList.remove('show');
 if(justSignedIn){justSignedIn=false;logIt('home','signed in','',account.id);save();toast('Welcome, '+account.name);}
@@ -1290,23 +1300,24 @@ var users=db.users.slice().sort(function(a,b){return(b.active-a.active)||String(
 var pend=db.invites.filter(function(i){return!active[i.id];}).sort(function(a,b){return String(a.name).localeCompare(String(b.name));});
 var html=users.map(function(u){var self=account&&u.id===account.id;
 return'<div class="trow'+(u.active?'':' off')+'" data-uid="'+u.id+'"><span class="avatar" aria-hidden="true">'+esc(String(u.name||'?').charAt(0).toUpperCase())+'</span><div class="tinfo"><b>'+esc(u.name)+(self?' <span class="role-tag emp">You</span>':'')+(u.active?'':' <span class="role-tag off">No access</span>')+'</b><span>@'+esc(u.user)+' · <span class="ttl">'+(u.title?esc(u.title):'No title')+'</span> <button type="button" class="et" aria-label="Edit job title for '+esc(u.name)+'">Edit title</button></span>'+
-(self?'<span>'+ROLES[u.role].n+'</span>':'<select class="urole" aria-label="Role for '+esc(u.name)+'">'+roleOpts(u.role)+'</select>')+'</div>'+
+(self?'<span>'+ROLES[u.role].n+'</span>':'<select class="urole" aria-label="Role for '+esc(u.name)+'">'+roleOpts(u.role)+'</select><select class="udept" aria-label="Department for '+esc(u.name)+'">'+deptOpts(u.dept)+'</select>')+'</div>'+
 '<div class="tact">'+(self?'':u.active?'<button type="button" class="rm">Remove access</button>':'<button type="button" class="rs">Restore</button>')+'</div></div>';}).join('')+
-pend.map(function(i){return'<div class="trow" data-inv="'+esc(i.id)+'"><span class="avatar" aria-hidden="true" style="background:#C9D3CC">'+esc(String(i.name||'?').charAt(0).toUpperCase())+'</span><div class="tinfo"><b>'+esc(i.name)+' <span class="role-tag inv">Not activated yet</span></b><span>@'+esc(i.id)+' · <span class="ttl">'+(i.title?esc(i.title):'No title')+'</span> <button type="button" class="et" aria-label="Edit job title for '+esc(i.name)+'">Edit title</button></span><select class="irole" aria-label="Role for '+esc(i.name)+'">'+roleOpts(i.role)+'</select></div><div class="tact"><button type="button" class="rmi">Cancel</button></div></div>';}).join('');
+pend.map(function(i){return'<div class="trow" data-inv="'+esc(i.id)+'"><span class="avatar" aria-hidden="true" style="background:#C9D3CC">'+esc(String(i.name||'?').charAt(0).toUpperCase())+'</span><div class="tinfo"><b>'+esc(i.name)+' <span class="role-tag inv">Not activated yet</span></b><span>@'+esc(i.id)+' · <span class="ttl">'+(i.title?esc(i.title):'No title')+'</span> <button type="button" class="et" aria-label="Edit job title for '+esc(i.name)+'">Edit title</button></span><select class="irole" aria-label="Role for '+esc(i.name)+'">'+roleOpts(i.role)+'</select><select class="idept" aria-label="Department for '+esc(i.name)+'">'+deptOpts(i.dept)+'</select></div><div class="tact"><button type="button" class="rmi">Cancel</button></div></div>';}).join('');
 document.getElementById('teamList').innerHTML=html||'<div class="pempty">No team members yet. Import the Excel file or add people below.</div>';}
 document.getElementById('teamList').addEventListener('change',function(e){if(!isMgr())return;var row=e.target.closest('.trow');if(!row)return;var v=e.target.value;
 if(e.target.classList.contains('urole')){var id=row.getAttribute('data-uid');FB.updateDoc(FB.doc(fsdb,'users/'+id),{role:v}).then(function(){var u=db.users.filter(function(x){return x.id===id;})[0];if(u)u.role=v;toast('Role updated. It applies the next time they sign in.');}).catch(function(err){toast(authMsg(err));});}
+if(e.target.classList.contains('udept')||e.target.classList.contains('idept')){var isU=e.target.classList.contains('udept'),key=isU?row.getAttribute('data-uid'):row.getAttribute('data-inv');FB.updateDoc(FB.doc(fsdb,(isU?'users/':'invites/')+key),{dept:v}).then(function(){var o=(isU?db.users:db.invites).filter(function(x){return x.id===key;})[0];if(o)o.dept=v;publishTeam();toast('Department updated');}).catch(function(err){toast(authMsg(err));});return;}
 if(e.target.classList.contains('irole')){var iid=row.getAttribute('data-inv');FB.updateDoc(FB.doc(fsdb,'invites/'+iid),{role:v}).then(function(){toast('Role updated');}).catch(function(err){toast(authMsg(err));});}});
 document.getElementById('teamList').addEventListener('click',function(e){if(!isMgr())return;var row=e.target.closest('.trow');if(!row)return;
 if(e.target.closest('.et')){var uidv=row.getAttribute('data-uid'),inv=row.getAttribute('data-inv'),obj=uidv?db.users.filter(function(x){return x.id===uidv;})[0]:db.invites.filter(function(x){return x.id===inv;})[0];if(!obj)return;
-var nt=window.prompt('Job title for '+obj.name+' (e.g. Sales Agent, Marketing Agent, Sales Director, Marketing Director, Financial Accountant):',obj.title||'');if(nt===null)return;nt=nt.replace(/\s+/g,' ').trim();if(nt===(obj.title||''))return; var self0=uidv&&account&&uidv===account.id,gr=guessRole(nt),up={title:nt};if(!self0&&gr!==(obj.role||'employee'))up.role=gr;
-FB.updateDoc(FB.doc(fsdb,(uidv?'users/'+uidv:'invites/'+inv)),up).then(function(){obj.title=nt;if(up.role){obj.role=up.role;toast(obj.name+' is now '+ROLES[up.role].n);}if(uidv&&account&&uidv===account.id){account.title=nt;paintWho();}paintTeam();toast(obj.name+'’s title updated');}).catch(function(err){toast(authMsg(err));});return;}
+var nt=window.prompt('Job title for '+obj.name+' (e.g. Sales Agent, Marketing Agent, Sales Director, Marketing Director, Financial Accountant):',obj.title||'');if(nt===null)return;nt=nt.replace(/\s+/g,' ').trim();if(nt===(obj.title||''))return; var self0=uidv&&account&&uidv===account.id,gr=guessRole(nt),gd=guessDept(nt),up={title:nt};if(!self0&&gr!==(obj.role||'employee'))up.role=gr;if(!self0&&gd&&gd!==(obj.dept||''))up.dept=gd;
+FB.updateDoc(FB.doc(fsdb,(uidv?'users/'+uidv:'invites/'+inv)),up).then(function(){obj.title=nt;if(up.dept)obj.dept=up.dept;if(up.role){obj.role=up.role;toast(obj.name+' is now '+ROLES[up.role].n);}if(uidv&&account&&uidv===account.id){account.title=nt;paintWho();}paintTeam();toast(obj.name+'’s title updated');}).catch(function(err){toast(authMsg(err));});return;}
 if(e.target.closest('.rmi')){var iid=row.getAttribute('data-inv');if(!window.confirm('Cancel the invitation for @'+iid+'?'))return;FB.deleteDoc(FB.doc(fsdb,'invites/'+iid)).then(function(){db.invites=db.invites.filter(function(x){return x.id!==iid;});paintTeam();}).catch(function(err){toast(authMsg(err));});return;}
 var u=db.users.filter(function(x){return x.id===row.getAttribute('data-uid');})[0];if(!u)return;
 var rm=e.target.closest('.rm'),rs=e.target.closest('.rs');if(!rm&&!rs)return;
 if(rm&&!window.confirm('Remove access for '+u.name+'? They won’t be able to sign in. Their past updates stay in the history.'))return;
 FB.updateDoc(FB.doc(fsdb,'users/'+u.id),{active:!!rs}).then(function(){u.active=!!rs;paintTeam();toast(rs?u.name+' can sign in again':u.name+' no longer has access');}).catch(function(err){toast(authMsg(err));});});
-function addInvites(list){var b=FB.writeBatch(fsdb);list.forEach(function(p){b.set(FB.doc(fsdb,'invites/'+p.user),{name:p.name,title:p.title||'',role:p.role,createdAt:Date.now(),createdBy:account.name});});
+function addInvites(list){var b=FB.writeBatch(fsdb);list.forEach(function(p){b.set(FB.doc(fsdb,'invites/'+p.user),{name:p.name,title:p.title||'',role:p.role,dept:p.dept!==undefined?p.dept:guessDept(p.title),createdAt:Date.now(),createdBy:account.name});});
 return b.commit().then(function(){list.forEach(function(p){if(!db.invites.some(function(i){return i.id===p.user;}))db.invites.push({id:p.user,name:p.name,title:p.title,role:p.role});});paintTeam();});}
 document.getElementById('teamAdd').addEventListener('submit',function(e){e.preventDefault();if(!isMgr())return;var form=this,err=document.getElementById('tErr');
 var n=document.getElementById('tName').value.trim(),ti=document.getElementById('tTitle').value.trim(),un=document.getElementById('tUser').value.trim().toLowerCase()||slugUser(n),r=document.getElementById('tRole').value;
@@ -1606,9 +1617,10 @@ function reqWhen(r){if(r.type==='leave'||r.type==='sick')return r.date===r.end?f
 return fmtD(r.date)+' · '+fmtT(r.tFrom)+' to '+fmtT(r.tTo)+(r.hours?' ('+r.hours+'h)':'');}
 function leaveUsed(uid,year){return db.requests.filter(function(r){return r.uid===uid&&r.type==='leave'&&r.status==='approved'&&String(r.date).slice(0,4)===String(year);}).reduce(function(a,r){return a+(+r.days||0);},0);}
 function outToday(){var t=isoToday();return db.requests.filter(function(r){return r.status==='approved'&&r.date<=t&&reqEnd(r)>=t;});}
-function pendingCount(){return db.requests.filter(function(r){return r.status==='pending';}).length;}
-function paintPermBadge(){var b=document.getElementById('permBadge'),n=isApprover()?pendingCount():0;b.hidden=!n;b.textContent=n;
-var c=document.getElementById('c-perm');if(c)c.textContent=isApprover()?(n?n+' waiting for you':'No pending requests'):(function(){var m=db.requests.filter(function(r){return r.uid===account.id&&r.status==='pending';}).length;return m?m+' pending':'Leave · visits';})();}
+function pendingCount(){return db.requests.filter(function(r){return r.status==='pending'&&canDecide(r);}).length;}
+function renderPermIfOpen(){try{if(cur==='perm'&&document.getElementById('dept').classList.contains('show'))renderPerm();}catch(e){}}
+function paintPermBadge(){var b=document.getElementById('permBadge'),n=decidesAny()?pendingCount():0;b.hidden=!n;b.textContent=n;
+var c=document.getElementById('c-perm');if(c)c.textContent=decidesAny()?(n?n+' waiting for you':'No pending requests'):(function(){var m=db.requests.filter(function(r){return r.uid===account.id&&r.status==='pending';}).length;return m?m+' pending':'Leave · visits';})();}
 /* form */
 var ptypes=document.getElementById('ptypes');
 ptypes.innerHTML=Object.keys(PTYPES).map(function(k){return'<button type="button" class="ptype" role="radio" data-t="'+k+'">'+pIcon(k)+PTYPES[k].l+'</button>';}).join('');
@@ -1627,7 +1639,7 @@ el.innerHTML=txt;}
 ['rFrom','rTo','rT1','rT2'].forEach(function(id){document.getElementById(id).addEventListener('input',paintSum);});
 document.getElementById('rFrom').addEventListener('change',function(){var t=document.getElementById('rTo');if(!t.value||t.value<this.value)t.value=this.value;paintSum();});
 document.getElementById('reqForm').addEventListener('submit',function(e){e.preventDefault();var er=document.getElementById('rErr'),btn=this.querySelector('.lbtn');er.hidden=true;
-var r={uid:account.id,name:account.name,title:account.title||'',type:rType,reason:document.getElementById('rReason').value.trim(),status:'pending',createdAt:Date.now()},msg='';
+var r={uid:account.id,dept:account.dept||'',name:account.name,title:account.title||'',type:rType,reason:document.getElementById('rReason').value.trim(),status:'pending',createdAt:Date.now()},msg='';
 if(rType==='leave'||rType==='sick'){r.date=document.getElementById('rFrom').value;r.end=document.getElementById('rTo').value;r.days=workDays(r.date,r.end);
 msg=!r.date||!r.end?'Choose the start and end dates':r.end<r.date?'The end date is before the start date':!r.days?'These dates are only Fridays':'';
 if(!msg&&rType==='leave'){var left=LEAVE_DAYS-leaveUsed(account.id,r.date.slice(0,4));if(r.days>left)msg='This is more than your leave balance ('+left+' days left)';}}
@@ -1652,7 +1664,7 @@ if(seesAllRequests()){var visits=db.requests.filter(function(r){return r.type===
 stats([['Waiting for approval',pendingCount(),pendingCount()>0],['Out today',t.length],['Client visits today',visits],['Approved this month',db.requests.filter(function(r){return r.status==='approved'&&String(r.date).slice(0,7)===mo;}).length]]);}
 else stats([['My pending',mine.filter(function(r){return r.status==='pending';}).length],['Leave balance',LEAVE_DAYS-leaveUsed(account.id,CUR_Y)],['Leave used '+CUR_Y,leaveUsed(account.id,CUR_Y)],['Client visits this month',mine.filter(function(r){return r.type==='client'&&r.status==='approved'&&String(r.date).slice(0,7)===mo;}).length]]);}
 function renderPerm(){if(!account)return;
-var segs=isApprover()?[['pending','Waiting'],['all','All requests'],['today','Out today'],['mine','Mine']]:seesAllRequests()?[['all','All requests'],['today','Out today'],['mine','Mine']]:[['mine','My requests']];
+var segs=decidesAny()?[['pending','Waiting'],['all','All requests'],['today','Out today'],['mine','Mine']]:seesAllRequests()?[['all','All requests'],['today','Out today'],['mine','Mine']]:[['mine','My requests']];
 if(!segs.some(function(x){return x[0]===pView;}))pView=segs[0][0];
 var pc=pendingCount();
 pseg.innerHTML=segs.map(function(x){return'<button type="button" role="tab" data-v="'+x[0]+'" class="'+(x[0]===pView?'on':'')+'" aria-selected="'+(x[0]===pView)+'">'+x[1]+(x[0]==='pending'&&pc?'<em>'+pc+'</em>':'')+'</button>';}).join('');
@@ -1670,7 +1682,7 @@ if(pView==='pending')list.sort(function(a,b){return(a.date>b.date?1:-1);});
 var el=document.getElementById('plist');
 if(!list.length){el.innerHTML='<div class="pempty">'+(pView==='pending'?'No requests waiting for approval.':pView==='today'?'Nobody is out today.':'No requests yet. Use the form to send one.')+'</div>';}
 else el.innerHTML=list.map(function(r){var mine=r.uid===account.id;
-var acts='';if(r.status==='pending'){if(isApprover()&&!mine)acts='<div class="pact"><button type="button" class="ok" data-a="approve">Approve</button><button type="button" class="no" data-a="reject">Reject</button></div>';
+var acts='';if(r.status==='pending'){if(canDecide(r)&&!mine)acts='<div class="pact"><button type="button" class="ok" data-a="approve">Approve</button><button type="button" class="no" data-a="reject">Reject</button></div>';
 else if(isApprover()&&mine)acts='<div class="pact"><button type="button" class="ok" data-a="approve">Approve</button><button type="button" data-a="cancel">Cancel</button></div>';
 else if(mine)acts='<div class="pact"><button type="button" data-a="cancel">Cancel request</button></div>';}
 var left=r.type==='leave'&&seesAllRequests()?' · Balance '+(LEAVE_DAYS-leaveUsed(r.uid,String(r.date).slice(0,4)))+' days':'';
@@ -1682,7 +1694,7 @@ permStats();paintPermBadge();}
 document.getElementById('plist').addEventListener('click',function(e){var b=e.target.closest('[data-a]');if(!b)return;var id=b.closest('.preq').getAttribute('data-id'),r=db.requests.filter(function(x){return x.id===id;})[0];if(!r)return;
 var a=b.getAttribute('data-a'),upd;
 if(a==='cancel'){if(!window.confirm('Cancel this request?'))return;upd={status:'cancelled',decidedBy:account.name,decidedAt:Date.now()};}
-else{if(!isApprover())return;var note='';if(a==='reject'){note=window.prompt('Reason for rejecting (optional):','');if(note===null)return;}
+else{if(!canDecide(r)&&!isApprover())return;var note='';if(a==='reject'){note=window.prompt('Reason for rejecting (optional):','');if(note===null)return;}
 upd={status:a==='approve'?'approved':'rejected',decidedBy:account.name,decidedById:account.id,decidedAt:Date.now()};if(note)upd.note=note.trim();}
 b.disabled=true;
 FB.updateDoc(FB.doc(fsdb,'requests/'+id),upd).then(function(){Object.assign(r,upd);logIt('perm','edited',r.name+' · '+PTYPES[r.type].l+' '+STL[r.status].toLowerCase(),id);save();renderPerm();toast(r.name+'’s request '+STL[r.status].toLowerCase());})
@@ -1797,7 +1809,7 @@ function dealByName(n){n=String(n||'').trim().toLowerCase();return n?db.sales.fi
 
 /* --- department shell: sub-tabs --- */
 var subtabsEl=document.getElementById('subtabs'),xView=document.getElementById('xView');
-function subList(){var l=SUBS[cur]||[];if(cur==='finance'&&!seesFinance())l=[['exp','My expenses']];return l;}
+function subList(){var l=SUBS[cur]||[];if(cur==='finance'&&!seesFinance())l=[['exp',dirDept()?'Team expenses':'My expenses']];return l;}
 function paintSubtabs(){var l=subList();if(!l.length){subtabsEl.hidden=true;return;}
 if(!l.some(function(s){return s[0]===sub[cur];}))sub[cur]=l[0][0];
 subtabsEl.hidden=l.length<2;subtabsEl.innerHTML=l.map(function(s){return'<button type="button" role="tab" aria-selected="'+(s[0]===sub[cur])+'" class="'+(s[0]===sub[cur]?'on':'')+'" data-sub="'+s[0]+'">'+s[1]+'</button>';}).join('');}
@@ -2053,7 +2065,7 @@ if(canPay())document.getElementById('foX').addEventListener('click',function(){e
 bindExpActions(xView);}
 function expLine(x){return'<div class="xline" data-x="'+x.id+'"><div><b>'+esc(x.name||'')+' · '+esc(x.cat||'')+'</b><span>'+esc(fmtDay(x.date))+(x.client?' · '+esc(x.client):'')+(x.desc?' · '+esc(x.desc):'')+'</span></div><div class="xl-r"><b>'+egp(num(x.amount))+'</b>'+expBtns(x)+'</div></div>';}
 function expBtns(x){var b='';if(x.receipt&&x.receipt.id)b+='<button type="button" class="mini" data-xa="view">Receipt</button>';
-if(isApprover()&&x.status==='submitted')b+='<button type="button" class="mini ok" data-xa="approve">Approve</button><button type="button" class="mini no" data-xa="reject">Reject</button>';
+if(canDecide(x)&&x.status==='submitted')b+='<button type="button" class="mini ok" data-xa="approve">Approve</button><button type="button" class="mini no" data-xa="reject">Reject</button>';
 if(canPay()&&x.status==='approved')b+='<button type="button" class="mini ok" data-xa="paid">Mark paid</button>';
 if(x.uid===account.id&&x.status==='submitted')b+='<button type="button" class="mini" data-xa="edit">Edit</button>';
 if((x.uid===account.id&&x.status==='submitted')||isMgr())b+='<button type="button" class="mini no" data-xa="del" aria-label="Delete expense">Delete</button>';return'<span class="xbtns">'+b+'</span>';}
@@ -2068,7 +2080,7 @@ if(a==='paid'){var u2={status:'paid',paidBy:who(),paidById:account.id,paidAt:Dat
 if(a==='del'){if(!window.confirm('Delete this expense of '+egp(num(x.amount))+'?'))return;FB.deleteDoc(ref).then(function(){db.expenses=db.expenses.filter(function(y){return y!==x;});logIt('finance','deleted','an expense of '+egp(num(x.amount)),id);save();renderX();toast('Expense deleted');}).catch(function(err){toast(authMsg(err));});}});}
 function renderExpenses(){var f=expFilter,all=db.expenses,list=all.filter(function(x){return(!f.month||expInMonth(x,f.month))&&(!f.who||x.name===f.who)&&(!f.st||x.status===f.st);});
 var mm=all.filter(function(x){return!f.month||expInMonth(x,f.month);});
-stats([[seesFinance()?'Total this month':'My expenses this month',kEgp(mm.filter(function(x){return x.status!=='rejected';}).reduce(function(a,x){return a+num(x.amount);},0))],['Waiting approval',mm.filter(function(x){return x.status==='submitted';}).length],['Approved, not paid',kEgp(mm.filter(function(x){return x.status==='approved';}).reduce(function(a,x){return a+num(x.amount);},0))],['Paid',kEgp(mm.filter(function(x){return x.status==='paid';}).reduce(function(a,x){return a+num(x.amount);},0))]]);
+stats([[seesFinance()?'Total this month':dirDept()?'Team expenses this month':'My expenses this month',kEgp(mm.filter(function(x){return x.status!=='rejected';}).reduce(function(a,x){return a+num(x.amount);},0))],['Waiting approval',mm.filter(function(x){return x.status==='submitted';}).length],['Approved, not paid',kEgp(mm.filter(function(x){return x.status==='approved';}).reduce(function(a,x){return a+num(x.amount);},0))],['Paid',kEgp(mm.filter(function(x){return x.status==='paid';}).reduce(function(a,x){return a+num(x.amount);},0))]]);
 var names={};all.forEach(function(x){if(x.name)names[x.name]=1;});
 xView.innerHTML='<div class="xtools"><label class="field inline">Month<select id="exM"><option value="">All months</option>'+monthOptsKeys(f.month)+'</select></label>'+
 (seesFinance()?'<label class="field inline">Person<select id="exW">'+opts(Object.keys(names).sort(),f.who,'Everyone')+'</select></label>':'')+
@@ -2103,7 +2115,7 @@ var up=file?prepFile(file).then(function(p){return helper('upload',p);}).then(fu
 if(!window.confirm('The receipt could not be uploaded ('+helperMsg(err)+'). Save the expense without it?'))throw err;return null;}):Promise.resolve(expEdit?expEdit.receipt||null:null);
 up.then(function(rc){data.receipt=rc;data.updatedAt=Date.now();
 if(expEdit){return FB.updateDoc(FB.doc(fsdb,'expenses/'+expEdit.id),data).then(function(){Object.assign(expEdit,data);logIt('finance','edited','an expense of '+egp(amt),expEdit.id);});}
-var id=uid(),doc=Object.assign({uid:account.id,name:me,status:'submitted',createdAt:Date.now()},data);
+var id=uid(),doc=Object.assign({uid:account.id,dept:account.dept||'',name:me,status:'submitted',createdAt:Date.now()},data);
 return FB.setDoc(FB.doc(fsdb,'expenses/'+id),doc).then(function(){doc.id=id;if(!db.expenses.some(function(y){return y.id===id;}))db.expenses.unshift(doc);logIt('finance','added','an expense of '+egp(amt),id);});})
 .then(function(){save();closeModal(expModal);renderX();toast(expEdit?'Expense updated':'Expense sent for approval');})
 .catch(function(err){if(err&&err.code){er.textContent=authMsg(err);er.hidden=false;}})
@@ -2290,7 +2302,7 @@ var k=String(r.person||'').trim().toLowerCase(),c=String(r.createdBy||'').trim()
 r.owner=byName[k]||(d!=='sales'?byName[c]||'':'')||'';if(r.owner&&!r.person&&d!=='finance')r.person=teamName(r.owner);n++;});});
 if(n){save();console.log('owners set on',n,'records');}}
 /* the Admin publishes a small team directory (names only) so directors can assign */
-function publishTeam(){if(!isMgr()||!fsdb)return;var list=db.users.map(function(u){return{uid:u.id,name:u.name||'',role:u.role||'employee',active:u.active!==false};});
+function publishTeam(){if(!isMgr()||!fsdb)return;var list=db.users.map(function(u){return{uid:u.id,name:u.name||'',role:u.role||'employee',dept:u.dept||'',active:u.active!==false};});
 var j=stable({list:list});if(shadow['meta/team']===j)return;shadow['meta/team']=j;FB.setDoc(FB.doc(fsdb,'meta/team'),{list:list}).catch(function(e){console.warn(e);});}
 function newForMe(){return db.sales.filter(function(r){return r.owner===account.id&&r.seen===false;});}
 function unassigned(){return db.sales.filter(function(r){return r.owner==='';});}
